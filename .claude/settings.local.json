@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npm install)",
+      "PowerShell(node scripts/generate-icons.mjs)",
+      "PowerShell(npm run build)"
+    ]
+  }
+}

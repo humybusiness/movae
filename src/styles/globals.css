@@ -1,0 +1,159 @@
+@import "@fontsource-variable/manrope";
+@import "@fontsource-variable/fraunces";
+@import "tailwindcss";
+
+@theme {
+  --color-fond: #f7f7f2;
+  --color-carte: #ffffff;
+  --color-encre: #1e2420;
+  --color-encre-2: #6d756f;
+  --color-ligne: #e5e7e0;
+  --color-sauge: #7fa68a;
+  --color-sauge-fonce: #4f755d;
+  --color-sauge-claire: #ddeadf;
+  --color-sable: #d9c7a7;
+  --color-ambre: #c9a86a;
+  --color-nuit: #111513;
+  --color-nuit-carte: #1d241f;
+  --color-nuit-texte: #f4f1e8;
+  --color-nuit-ligne: #2d352f;
+  --color-sauge-nuit: #8fbf9a;
+  --font-sans: "Manrope Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-fond text-encre font-sans antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-sauge-claire);
+  color: var(--color-sauge-fonce);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-sauge-fonce);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- Thème applicatif (variables surchargées par thème) ---------- */
+.m-app {
+  --m-bg: #f7f7f2;
+  --m-bg2: #f1f1ea;
+  --m-card: #ffffff;
+  --m-ink: #1e2420;
+  --m-ink2: #6d756f;
+  --m-line: #e5e7e0;
+  --m-accent: #7fa68a;
+  --m-strong: #4f755d;
+  --m-soft: #ddeadf;
+  --m-shadow: 0 1px 2px rgb(30 36 32 / 0.04), 0 8px 24px -12px rgb(30 36 32 / 0.12);
+  background: var(--m-bg);
+  color: var(--m-ink);
+}
+
+/* ---------- Révélation douce au scroll (landing) ---------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---------- Animations des figures d'exercice ---------- */
+@keyframes m-head-turn {
+  0%, 100% { transform: rotate(-14deg); }
+  50% { transform: rotate(14deg); }
+}
+@keyframes m-head-tilt {
+  0%, 100% { transform: rotate(-16deg); }
+  50% { transform: rotate(4deg); }
+}
+@keyframes m-chin-tuck {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-7px); }
+}
+@keyframes m-shoulder-roll {
+  0% { transform: translateY(0); }
+  25% { transform: translateY(-6px); }
+  50% { transform: translateY(0); }
+  75% { transform: translateY(2px); }
+  100% { transform: translateY(0); }
+}
+@keyframes m-chest-open {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-26deg); }
+}
+@keyframes m-twist {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(8deg); }
+}
+@keyframes m-fold {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(32deg); }
+}
+@keyframes m-extend {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-14deg); }
+}
+@keyframes m-wrist {
+  0%, 100% { transform: rotate(-30deg); }
+  50% { transform: rotate(38deg); }
+}
+@keyframes m-leg {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-62deg); }
+}
+@keyframes m-march {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-34deg); }
+}
+@keyframes m-reach {
+  0%, 100% { transform: rotate(150deg); }
+  50% { transform: rotate(184deg); }
+}
+@keyframes m-breath {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+@keyframes m-gaze {
+  0%, 45% { opacity: 1; }
+  55%, 100% { opacity: 0.15; }
+}
+@keyframes m-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes m-pulse-soft {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+  }
+}
