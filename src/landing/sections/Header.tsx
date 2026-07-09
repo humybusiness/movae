@@ -1,6 +1,4 @@
-import { Link } from "react-router-dom";
 import { Container, Logo, useInstall } from "../shared";
-import { APP_URL } from "../../lib/constants";
 
 const LINKS = [
   { href: "#probleme", label: "Problème" },
@@ -30,20 +28,12 @@ export function Header() {
             </a>
           ))}
         </nav>
-        <div className="flex items-center gap-3">
-          <Link
-            to={APP_URL}
-            className="hidden text-sm font-semibold text-sauge-fonce transition hover:opacity-75 sm:block"
-          >
-            Ouvrir l’app
-          </Link>
-          <button
-            onClick={requestInstall}
-            className="cursor-pointer rounded-xl bg-sauge-fonce px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-          >
-            Télécharger
-          </button>
-        </div>
+        <button
+          onClick={requestInstall}
+          className="cursor-pointer rounded-xl bg-sauge-fonce px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+        >
+          Télécharger
+        </button>
       </Container>
     </header>
   );

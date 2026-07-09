@@ -2,10 +2,34 @@
 
 **La pause active créée par des kinés pour les journées devant l’écran.**
 
-Movaé est une PWA desktop-first pour télétravailleurs : un site vitrine premium sur `/`
-et une application complète sur `/app`, avec un moteur d’analyse local qui recommande
-la bonne micro-pause au bon moment. 100 % front-end : pas de backend, pas de compte,
-pas de données qui quittent le navigateur.
+Movaé, c’est désormais **deux livrables** dans un seul dépôt :
+
+1. **Le site vitrine** (`/`, déployé sur Vercel) — présente le produit et fait
+   télécharger l’installeur Windows.
+2. **La vraie application de bureau** (Electron, `release/Movae-Setup.exe`) —
+   100 exercices illustrés, 21 programmes et un moteur adaptatif qui vit dans la
+   zone de notification Windows : détection d’inactivité **système** (toutes
+   applications confondues), rappels natifs même fenêtre fermée.
+
+La route `/app` reste disponible en version navigateur (démo et développement).
+
+## Construire l’application de bureau
+
+```bash
+npm run desktop:dev     # build + lance Electron en local
+npm run desktop:build   # produit release/Movae-Setup.exe (installeur Windows)
+```
+
+**Publier une nouvelle version** : montez `version` dans package.json, lancez
+`npm run desktop:build`, puis uploadez `release/Movae-Setup.exe` dans une release
+GitHub (https://github.com/humybusiness/movae/releases → *Draft a new release*).
+Le bouton « Télécharger » du site pointe en permanence vers
+`releases/latest/download/Movae-Setup.exe` — publier une release suffit.
+
+**Note SmartScreen** : l’exe n’est pas signé (un certificat de signature de code
+coûte ~300 €/an). Windows affichera « Windows a protégé votre ordinateur » au
+premier lancement — la modale du site explique à l’utilisateur comment passer
+(« Informations complémentaires » → « Exécuter quand même »).
 
 > Movaé accompagne les pauses actives et l’hygiène de mouvement au travail.
 > L’application ne remplace pas un avis médical.

@@ -7,6 +7,7 @@ import {
   Gift,
   Play,
   RefreshCw,
+  Sparkles,
   Sun,
   Target,
 } from "lucide-react";
@@ -20,7 +21,7 @@ import {
 } from "../engine/engine";
 import { EYE_EXERCISE_ID, exerciseById, type Exercise } from "../data/exercises";
 import { REWARDS } from "../data/rewards";
-import { FigureVisual } from "../components/FigureVisual";
+import { ExerciseFigure } from "../components/ExerciseFigure";
 import { IndexVisual } from "../components/IndexVisual";
 import { Chip, MButton, MCard, ProgressBar } from "../components/ui";
 import { URGENCY_LABELS, ZONE_LABELS, ZONES, type UrgencyLevel } from "../types";
@@ -147,7 +148,7 @@ export function Dashboard({
 
               <div className="mt-4 flex flex-1 flex-wrap items-center gap-6">
                 <div className="shrink-0 rounded-2xl bg-[var(--m-bg2)] p-2">
-                  <FigureVisual visual={proposed.visual} size={120} />
+                  <ExerciseFigure motion={proposed.motion} size={124} animate />
                 </div>
                 <div className="min-w-52 flex-1">
                   <p className="text-xs font-bold uppercase tracking-widest text-[var(--m-ink2)]">
@@ -164,7 +165,25 @@ export function Dashboard({
                       </Chip>
                     ))}
                     <Chip>{formatDuration(proposed.durationSec)}</Chip>
+                    <Chip tone="warm">{proposed.reps}</Chip>
                   </div>
+                  {state.prefs.smartMode && rec.reasons.length > 0 && altIndex < 0 && (
+                    <p className="mt-2.5 flex items-start gap-1.5 text-xs text-[var(--m-ink2)]">
+                      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--m-accent)]" aria-hidden />
+                      <span>Pourquoi : {rec.reasons.join(" · ")}.</span>
+                    </p>
+                  )}
+                  {state.prefs.smartMode &&
+                    rec.nextIdealAt &&
+                    (rec.level === "fraiche" || rec.level === "ok") && (
+                      <p className="mt-1.5 text-xs text-[var(--m-ink2)]">
+                        Prochaine fenêtre idéale estimée vers{" "}
+                        <span className="font-semibold text-[var(--m-strong)]">
+                          {formatClock(rec.nextIdealAt)}
+                        </span>
+                        .
+                      </p>
+                    )}
                 </div>
               </div>
 

@@ -9,7 +9,7 @@ import {
   ShieldCheck,
   UserX,
 } from "lucide-react";
-import { Container, PrimaryCta, Reveal, SecondaryCta } from "../shared";
+import { Container, PrimaryCta, Reveal } from "../shared";
 import { CONTACT_EMAIL } from "../../lib/constants";
 
 const TEAM_CARDS = [
@@ -47,16 +47,19 @@ export function InstallTeams() {
         {/* Installation */}
         <Reveal className="mx-auto max-w-2xl text-center" >
           <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-            Installez Movaé comme une vraie app.
+            Une vraie application sur votre ordinateur.
           </h2>
           <p className="mt-4 text-lg text-encre-2">
-            Ouvrez le site, cliquez sur Télécharger, puis lancez Movaé depuis votre
-            ordinateur. Pas de store, pas de fichier à exécuter.
+            Téléchargez l’installeur Windows, double-cliquez, c’est prêt. Movaé vit ensuite
+            dans votre barre des tâches : le moteur analyse votre rythme toute la journée,
+            même fenêtre fermée, et vous propose la bonne pause au bon moment.
           </p>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-            <PrimaryCta>Télécharger Movaé</PrimaryCta>
-            <SecondaryCta href="/app">Essayer dans le navigateur</SecondaryCta>
+            <PrimaryCta>Télécharger pour Windows</PrimaryCta>
           </div>
+          <p className="mt-3 text-xs text-encre-2">
+            Gratuit · Windows 10/11 · macOS et Linux à venir
+          </p>
         </Reveal>
 
         {/* Entreprises */}

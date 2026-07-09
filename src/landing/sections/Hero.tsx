@@ -4,9 +4,9 @@ import { Container, Pill, PrimaryCta, Reveal, SecondaryCta } from "../shared";
 
 const PILLS = [
   "Créé par 3 kinés",
-  "Exercices assis",
+  "100 exercices assis",
   "Sans matériel",
-  "PWA installable",
+  "Application Windows",
   "Gratuit au lancement",
 ];
 
@@ -44,7 +44,7 @@ export function Hero() {
             </SecondaryCta>
           </div>
           <p className="mt-4 text-sm text-encre-2">
-            Installation en navigateur. Compte Google optionnel pour synchroniser vos appareils.
+            Application de bureau pour Windows. Installation en un clic, compte optionnel.
           </p>
         </Reveal>
         <Reveal delay={150}>

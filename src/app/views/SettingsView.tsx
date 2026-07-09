@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Bell, Download, RotateCcw } from "lucide-react";
+import { Bell, Brain, Download, Eraser, RotateCcw } from "lucide-react";
 import { exportStateAsJson, useMovae } from "../state/store";
+import { effectiveCadence, learnedSummary } from "../engine/engine";
 import { themeUnlocked } from "../data/rewards";
 import { THEMES } from "../data/themes";
 import { MButton, MCard, SectionTitle, Toggle } from "../components/ui";
@@ -85,6 +86,69 @@ export function SettingsView() {
           }
           className="mt-2 w-full accent-[var(--m-strong)]"
         />
+      </MCard>
+
+      <MCard className="mt-5 p-6">
+        <div className="flex items-center gap-2">
+          <Brain className="h-5 w-5 text-[var(--m-strong)]" aria-hidden />
+          <h3 className="font-display text-lg font-semibold">Intelligence Movaé</h3>
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold">Moteur adaptatif</p>
+            <p className="mt-0.5 text-xs text-[var(--m-ink2)]">
+              Movaé apprend localement : heures réceptives, cadence réelle, exercices
+              appréciés. Désactivé = rappels à cadence fixe, aucun apprentissage.
+            </p>
+          </div>
+          <Toggle
+            checked={state.prefs.smartMode}
+            label="Moteur adaptatif"
+            onChange={(v) => dispatch({ type: "set-prefs", patch: { smartMode: v } })}
+          />
+        </div>
+        {state.prefs.smartMode && (
+          <div className="mt-4 space-y-1.5 rounded-xl bg-[var(--m-bg2)] p-4 text-xs text-[var(--m-ink2)]">
+            <p className="text-sm font-semibold text-[var(--m-ink)]">
+              Ce que le moteur a appris (visible et effaçable) :
+            </p>
+            {(() => {
+              const learned = learnedSummary(state);
+              const eff = effectiveCadence(state);
+              return (
+                <>
+                  <p>
+                    · Cadence observée :{" "}
+                    {learned.cadenceAuto !== null
+                      ? `${Math.round(learned.cadenceAuto)} min (rythme effectif : ${eff} min, réglage : ${state.profile.cadenceMin} min)`
+                      : "pas encore assez de pauses pour apprendre"}
+                  </p>
+                  <p>
+                    · Heures observées : {learned.observedHours.length > 0
+                      ? learned.observedHours.map((h) => `${h.hour} h`).join(", ")
+                      : "aucune pour l'instant"}
+                  </p>
+                  <p>
+                    · Exercices essayés : {learned.triedCount} / 100
+                    {learned.favorite ? ` — favori : ${learned.favorite.name}` : ""}
+                  </p>
+                  <p className="pt-1 font-medium text-[var(--m-ink)]">
+                    Ces apprentissages ne quittent jamais votre appareil (ou votre compte).
+                    Aucune caméra, aucun contenu de travail analysé.
+                  </p>
+                </>
+              );
+            })()}
+            <MButton
+              variant="secondary"
+              className="mt-2 !py-1.5 text-xs"
+              onClick={() => dispatch({ type: "clear-insights" })}
+            >
+              <Eraser className="h-3.5 w-3.5" aria-hidden />
+              Effacer les apprentissages
+            </MButton>
+          </div>
+        )}
       </MCard>
 
       <MCard className="mt-5 p-6">

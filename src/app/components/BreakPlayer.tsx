@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Pause, Play, SkipForward, X } from "lucide-react";
+import { Check, FlaskConical, Pause, Play, SkipForward, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import type { Exercise } from "../data/exercises";
-import { FigureVisual } from "./FigureVisual";
+import { ExerciseFigure } from "./ExerciseFigure";
 import { Chip, MButton } from "./ui";
 import { ZONE_LABELS } from "../types";
 import { formatDuration } from "../../lib/time";
@@ -12,16 +12,20 @@ import { formatDuration } from "../../lib/time";
 export function BreakPlayer({
   queue,
   onCompleteExercise,
+  onFeedback,
   onClose,
 }: {
   queue: Exercise[];
   onCompleteExercise: (exercise: Exercise, actualSec: number) => void;
+  onFeedback?: (exerciseId: string, up: boolean) => void;
   onClose: () => void;
 }) {
   const [idx, setIdx] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [feedbackGiven, setFeedbackGiven] = useState<Record<string, boolean>>({});
+  const doneList = useRef<Exercise[]>([]);
   const doneCount = useRef(0);
 
   const exercise = queue[Math.min(idx, queue.length - 1)];
@@ -32,6 +36,7 @@ export function BreakPlayer({
 
   const completeCurrent = (sec: number) => {
     onCompleteExercise(exercise, sec);
+    doneList.current = [...doneList.current, exercise];
     doneCount.current += 1;
     if (idx + 1 < queue.length) {
       setIdx(idx + 1);
@@ -88,6 +93,52 @@ export function BreakPlayer({
                 ? `${doneCount.current} exercices terminés. Votre Indice en tient compte.`
                 : "Bien joué. Votre Indice Movaé en tient compte."}
             </p>
+            {onFeedback && doneList.current.length > 0 && (
+              <div className="mx-auto mt-5 max-w-sm space-y-2 text-left">
+                <p className="text-center text-xs font-semibold uppercase tracking-wider text-[var(--m-ink2)]">
+                  Ces exercices vous ont fait du bien ?
+                </p>
+                {doneList.current.map((ex) => (
+                  <div
+                    key={ex.id}
+                    className="flex items-center gap-3 rounded-xl border border-[var(--m-line)] px-3.5 py-2"
+                  >
+                    <span className="flex-1 truncate text-sm font-medium">{ex.name}</span>
+                    {feedbackGiven[ex.id] !== undefined ? (
+                      <span className="text-xs font-semibold text-[var(--m-strong)]">
+                        {feedbackGiven[ex.id] ? "Noté 👍" : "Noté, merci"}
+                      </span>
+                    ) : (
+                      <>
+                        <button
+                          aria-label={`J'ai aimé ${ex.name}`}
+                          onClick={() => {
+                            onFeedback(ex.id, true);
+                            setFeedbackGiven((f) => ({ ...f, [ex.id]: true }));
+                          }}
+                          className="rounded-lg p-1.5 text-[var(--m-ink2)] transition hover:bg-[var(--m-soft)] hover:text-[var(--m-strong)]"
+                        >
+                          <ThumbsUp className="h-4 w-4" aria-hidden />
+                        </button>
+                        <button
+                          aria-label={`Je n'ai pas aimé ${ex.name}`}
+                          onClick={() => {
+                            onFeedback(ex.id, false);
+                            setFeedbackGiven((f) => ({ ...f, [ex.id]: false }));
+                          }}
+                          className="rounded-lg p-1.5 text-[var(--m-ink2)] transition hover:bg-[var(--m-bg2)] hover:text-[var(--m-ink)]"
+                        >
+                          <ThumbsDown className="h-4 w-4" aria-hidden />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+                <p className="text-center text-[11px] text-[var(--m-ink2)]">
+                  Vos retours aident le moteur à mieux choisir. Ils restent sur votre appareil.
+                </p>
+              </div>
+            )}
             <MButton className="mt-6" onClick={onClose} autoFocus>
               Retour au tableau de bord
             </MButton>
@@ -111,6 +162,7 @@ export function BreakPlayer({
                     </Chip>
                   ))}
                   <Chip>{formatDuration(exercise.durationSec)}</Chip>
+                  <Chip tone="warm">{exercise.reps}</Chip>
                 </div>
               </div>
               <button
@@ -140,7 +192,7 @@ export function BreakPlayer({
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <FigureVisual visual={exercise.visual} size={110} />
+                  <ExerciseFigure motion={exercise.motion} size={116} animate />
                   <span className="font-display -mt-1 text-xl font-bold tabular-nums" aria-live="polite">
                     {remaining}s
                   </span>
@@ -197,7 +249,13 @@ export function BreakPlayer({
                 </MButton>
               )}
             </div>
-            <p className="mt-4 text-center text-xs text-[var(--m-ink2)]">
+            {exercise.science && (
+              <p className="mt-4 flex items-start justify-center gap-1.5 text-center text-xs text-[var(--m-ink2)]">
+                <FlaskConical className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span className="max-w-md">{exercise.science}</span>
+              </p>
+            )}
+            <p className="mt-3 text-center text-xs text-[var(--m-ink2)]">
               Restez dans une amplitude confortable. Un mouvement ne doit jamais être douloureux.
             </p>
           </div>

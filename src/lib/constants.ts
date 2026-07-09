@@ -1,6 +1,10 @@
-// URL interne de l'application. À modifier si l'app est hébergée séparément
-// (ex. "https://app.movae.fr").
+// URL interne de l'application (version navigateur, utilisée pour la démo).
 export const APP_URL = "/app";
+
+// Installeur Windows de l'application de bureau. Publié sur GitHub Releases :
+// « releases/latest » pointe toujours vers la dernière version.
+export const DOWNLOAD_URL_WINDOWS =
+  "https://github.com/humybusiness/movae/releases/latest/download/Movae-Setup.exe";
 
 // Adresse de contact utilisée par le bouton "Demander une démo".
 export const CONTACT_EMAIL = "humybusiness28@gmail.com";

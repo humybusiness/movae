@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, HashRouter, Navigate, Route, Routes } from "react-router-dom";
+import { isDesktop } from "./lib/desktop";
 
 // Découpage par route : la landing reste légère, Firebase et l'app ne se
 // chargent que lorsqu'on ouvre /app.
@@ -15,6 +16,20 @@ function Fallback() {
 }
 
 export default function App() {
+  // Version bureau (Electron, chargée en file://) : HashRouter + app directe.
+  if (isDesktop()) {
+    return (
+      <HashRouter>
+        <Suspense fallback={<Fallback />}>
+          <Routes>
+            <Route path="/app/*" element={<MovaeApp />} />
+            <Route path="*" element={<Navigate to="/app" replace />} />
+          </Routes>
+        </Suspense>
+      </HashRouter>
+    );
+  }
+
   return (
     <BrowserRouter>
       <Suspense fallback={<Fallback />}>

@@ -1,5 +1,7 @@
 import { useMemo } from "react";
+import { Brain } from "lucide-react";
 import { useMovae } from "../state/store";
+import { learnedSummary } from "../engine/engine";
 import { exerciseById } from "../data/exercises";
 import { MCard, SectionTitle } from "../components/ui";
 import { ZONE_LABELS, ZONES, type Zone } from "../types";
@@ -111,6 +113,55 @@ export function ProgressView({ now }: { now: number }) {
           </p>
         </MCard>
       </div>
+
+      {state.prefs.smartMode && (() => {
+        const learned = learnedSummary(state);
+        if (learned.observedHours.length === 0 && learned.triedCount === 0) return null;
+        return (
+          <MCard className="mt-5 p-6">
+            <div className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-[var(--m-strong)]" aria-hidden />
+              <h3 className="font-display text-lg font-semibold">Ce que Movaé a appris</h3>
+            </div>
+            {learned.observedHours.length > 0 && (
+              <>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-[var(--m-ink2)]">
+                  Votre réceptivité aux pauses, heure par heure
+                </p>
+                <div
+                  className="mt-3 flex h-24 items-end gap-1.5"
+                  role="img"
+                  aria-label="Réceptivité aux pauses par heure de la journée"
+                >
+                  {learned.observedHours.map((h) => (
+                    <div key={h.hour} className="flex flex-1 flex-col items-center gap-1">
+                      <div
+                        className="w-full max-w-8 rounded-t-md bg-[var(--m-accent)]"
+                        style={{ height: `${Math.round(h.receptivity * 100)}%`, opacity: 0.4 + h.receptivity * 0.6 }}
+                        title={`${h.hour} h : ${Math.round(h.receptivity * 100)} % (${h.samples} propositions)`}
+                      />
+                      <span className="text-[10px] font-semibold text-[var(--m-ink2)]">{h.hour}h</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-[var(--m-ink2)]">
+                  Le moteur propose plus volontiers aux heures hautes et protège les heures
+                  basses (vos phases de concentration).
+                </p>
+              </>
+            )}
+            <p className="mt-4 text-sm">
+              <span className="font-semibold">{learned.triedCount}</span>
+              <span className="text-[var(--m-ink2)]"> exercices essayés sur 100</span>
+              {learned.favorite && (
+                <span className="text-[var(--m-ink2)]">
+                  {" "}— favori : <span className="font-semibold text-[var(--m-ink)]">{learned.favorite.name}</span>
+                </span>
+              )}
+            </p>
+          </MCard>
+        );
+      })()}
 
       <MCard className="mt-5 p-6">
         <h3 className="font-display text-lg font-semibold">Dernières pauses</h3>

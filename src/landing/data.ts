@@ -73,8 +73,8 @@ export const FEATURES: Feature[] = [
   },
   {
     icon: "MonitorDown",
-    title: "PWA installable",
-    text: "S’installe depuis le navigateur, comme une vraie app de bureau.",
+    title: "Vraie app de bureau",
+    text: "S’installe sur votre PC et veille depuis la barre des tâches, même fenêtre fermée.",
   },
 ];
 
@@ -98,7 +98,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   },
   {
     q: "Comment télécharger Movaé ?",
-    a: "Movaé s’installe directement depuis le navigateur (PWA) : cliquez sur « Télécharger Movaé », ou utilisez l’icône d’installation de Chrome/Edge. Aucun store, aucun fichier à exécuter.",
+    a: "Cliquez sur « Télécharger Movaé » : vous recevez l’installeur Windows (Movae-Setup.exe). Double-cliquez dessus : l’installation se fait en un clic et Movaé apparaît dans votre menu Démarrer. macOS et Linux arrivent ensuite.",
   },
   {
     q: "Est-ce gratuit ?",
@@ -106,11 +106,11 @@ export const FAQ_ITEMS: FaqItem[] = [
   },
   {
     q: "Faut-il créer un compte ?",
-    a: "Non, c’est optionnel. Vous pouvez utiliser Movaé sans compte : vos données restent alors dans votre navigateur. Si vous créez un compte (Google ou e-mail), votre progression est synchronisée et vous la retrouvez sur tous vos appareils.",
+    a: "Non, c’est optionnel. Sans compte, vos données restent sur votre ordinateur. Avec un compte (e-mail, ou Google sur le web), votre progression est synchronisée et vous la retrouvez sur tous vos appareils.",
   },
   {
-    q: "Les rappels fonctionnent-ils quand l’app est fermée ?",
-    a: "Les rappels dépendent du navigateur : ils fonctionnent tant que Movaé est ouvert (onglet ou fenêtre installée, même en arrière-plan). Si vous fermez complètement l’app, les rappels s’arrêtent — c’est une limite assumée et documentée de la V1.",
+    q: "Les rappels fonctionnent-ils quand la fenêtre est fermée ?",
+    a: "Oui. L’application de bureau veille depuis la zone de notification Windows : fermer la fenêtre ne l’arrête pas, le moteur continue d’analyser votre rythme et les rappels natifs continuent d’arriver. Pour l’arrêter complètement : clic droit sur l’icône Movaé > Quitter.",
   },
   {
     q: "Est-ce que mon entreprise voit mon score ?",

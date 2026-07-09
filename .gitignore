@@ -1,6 +1,9 @@
 node_modules
 dist
+dist-desktop
 dev-dist
+release
 .vercel
 *.local
+.env
 .DS_Store

@@ -6,15 +6,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Link } from "react-router-dom";
-import { CheckCircle2, Download, MousePointerClick, X } from "lucide-react";
-import {
-  canPromptInstall,
-  isStandalone,
-  onInstallChange,
-  triggerInstall,
-} from "../lib/installPrompt";
-import { APP_URL } from "../lib/constants";
+import { Download, MonitorDown, ShieldAlert, X } from "lucide-react";
+import { DOWNLOAD_URL_WINDOWS } from "../lib/constants";
 
 // ---------- Conteneur ----------
 export function Container({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -85,80 +78,37 @@ export function Logo({ size = 32 }: { size?: number }) {
   );
 }
 
-// ---------- Installation PWA (contexte + modale) ----------
-type Platform = "desktop-chromium" | "ios" | "android" | "firefox" | "other";
+// ---------- Téléchargement de l'application de bureau ----------
 
-function detectPlatform(): Platform {
-  if (typeof navigator === "undefined") return "other";
-  const ua = navigator.userAgent;
-  if (/iphone|ipad|ipod/i.test(ua) || (/mac/i.test(ua) && "ontouchend" in document)) return "ios";
-  if (/android/i.test(ua)) return "android";
-  if (/firefox/i.test(ua)) return "firefox";
-  if (/edg|chrome|chromium/i.test(ua)) return "desktop-chromium";
-  return "other";
+function isWindows(): boolean {
+  return typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent);
 }
 
 interface InstallContextValue {
   requestInstall: () => void;
-  canInstall: boolean;
-  installed: boolean;
 }
 
 const InstallContext = createContext<InstallContextValue>({
   requestInstall: () => {},
-  canInstall: false,
-  installed: false,
 });
 
 export function useInstall() {
   return useContext(InstallContext);
 }
 
-function InstallModal({ onClose }: { onClose: () => void }) {
-  const platform = detectPlatform();
+function DownloadModal({ started, onClose }: { started: boolean; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const steps: Record<Platform, { label: string; text: string }[]> = {
-    "desktop-chromium": [
-      { label: "1", text: "Cliquez sur l’icône d’installation (un écran avec une flèche) tout à droite de la barre d’adresse." },
-      { label: "2", text: "Confirmez « Installer » : Movaé s’ouvre dans sa propre fenêtre, comme un logiciel." },
-    ],
-    android: [
-      { label: "1", text: "Ouvrez le menu ⋮ de votre navigateur." },
-      { label: "2", text: "Touchez « Installer l’application » ou « Ajouter à l’écran d’accueil »." },
-    ],
-    ios: [
-      { label: "1", text: "Dans Safari, touchez le bouton Partager (le carré avec une flèche)." },
-      { label: "2", text: "Choisissez « Sur l’écran d’accueil », puis « Ajouter »." },
-    ],
-    firefox: [
-      { label: "1", text: "Firefox n’installe pas les applications web sur ordinateur." },
-      { label: "2", text: "Ouvrez Movaé dans le navigateur, ou installez-la depuis Chrome / Edge." },
-    ],
-    other: [
-      { label: "1", text: "Ouvrez ce site dans Chrome ou Edge pour l’installer comme une application." },
-      { label: "2", text: "Ou utilisez Movaé directement dans votre navigateur." },
-    ],
-  };
-
-  const titles: Record<Platform, string> = {
-    "desktop-chromium": "Installer Movaé sur votre ordinateur",
-    android: "Installer Movaé sur Android",
-    ios: "Ajouter Movaé sur iPhone / iPad",
-    firefox: "Ouvrir Movaé",
-    other: "Installer Movaé",
-  };
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-encre/40 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="install-title"
+      aria-labelledby="dl-title"
       onClick={onClose}
     >
       <div
@@ -166,8 +116,8 @@ function InstallModal({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
-          <h2 id="install-title" className="font-display text-xl font-semibold tracking-tight">
-            {titles[platform]}
+          <h2 id="dl-title" className="font-display text-xl font-semibold tracking-tight">
+            {started ? "Téléchargement lancé" : "Movaé pour Windows"}
           </h2>
           <button
             onClick={onClose}
@@ -177,98 +127,91 @@ function InstallModal({ onClose }: { onClose: () => void }) {
             <X className="h-5 w-5" aria-hidden />
           </button>
         </div>
-        <p className="mt-2 text-sm text-encre-2">
-          Movaé est une application web : elle s’installe directement depuis le navigateur,
-          sans store ni fichier à télécharger.
-        </p>
-        <ol className="mt-5 space-y-3 text-sm">
-          {steps[platform].map((s) => (
-            <li key={s.label} className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sauge-claire text-xs font-bold text-sauge-fonce">
-                {s.label}
+
+        {started ? (
+          <>
+            <p className="mt-2 text-sm text-encre-2">
+              <strong>Movae-Setup.exe</strong> arrive dans votre dossier Téléchargements.
+            </p>
+            <ol className="mt-5 space-y-3 text-sm">
+              <li className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sauge-claire text-xs font-bold text-sauge-fonce">1</span>
+                <span className="pt-0.5">Ouvrez le fichier <strong>Movae-Setup.exe</strong> une fois le téléchargement terminé.</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sauge-claire text-xs font-bold text-sauge-fonce">2</span>
+                <span className="pt-0.5">L'installation se fait en un clic : Movaé se lance et s'ajoute à votre menu Démarrer.</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sauge-claire text-xs font-bold text-sauge-fonce">3</span>
+                <span className="pt-0.5">Movaé veille ensuite depuis la zone de notification, même fenêtre fermée.</span>
+              </li>
+            </ol>
+            <p className="mt-5 flex items-start gap-2 rounded-xl bg-fond p-3 text-xs text-encre-2">
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-ambre" aria-hidden />
+              <span>
+                Si Windows affiche « Windows a protégé votre ordinateur » (application récente,
+                pas encore signée) : cliquez sur <strong>Informations complémentaires</strong> puis{" "}
+                <strong>Exécuter quand même</strong>.
               </span>
-              <span className="pt-0.5">{s.text}</span>
-            </li>
-          ))}
-        </ol>
-        <Link
-          to={APP_URL}
-          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sauge-fonce px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90"
-        >
-          <MousePointerClick className="h-4 w-4" aria-hidden />
-          Ouvrir Movaé maintenant
-        </Link>
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="mt-2 text-sm text-encre-2">
+              L'application de bureau Movaé est disponible pour <strong>Windows</strong>.
+              Les versions macOS et Linux arrivent ensuite.
+            </p>
+            <a
+              href={DOWNLOAD_URL_WINDOWS}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sauge-fonce px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+            >
+              <MonitorDown className="h-4 w-4" aria-hidden />
+              Télécharger pour Windows
+            </a>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-function InstalledToast({ onClose }: { onClose: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 5000);
-    return () => clearTimeout(t);
-  }, [onClose]);
-  return (
-    <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-ligne bg-white px-4 py-3 text-sm font-semibold shadow-2xl">
-      <CheckCircle2 className="h-4 w-4 text-sauge-fonce" aria-hidden />
-      Movaé est installée. Retrouvez-la parmi vos applications.
-    </div>
-  );
-}
-
 export function InstallProvider({ children }: { children: ReactNode }) {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [canInstall, setCanInstall] = useState(canPromptInstall());
-  const [installed, setInstalled] = useState(isStandalone());
-  const [showToast, setShowToast] = useState(false);
+  const [modal, setModal] = useState<null | { started: boolean }>(null);
 
-  useEffect(() => onInstallChange(() => {
-    setCanInstall(canPromptInstall());
-    setInstalled(isStandalone());
-  }), []);
-
-  const requestInstall = async () => {
-    if (isStandalone()) {
-      window.location.href = APP_URL;
-      return;
-    }
-    const result = await triggerInstall();
-    if (result === "accepted") {
-      setShowToast(true);
-      setInstalled(true);
-    } else if (result === "fallback") {
-      setModalOpen(true);
+  const requestInstall = () => {
+    if (isWindows()) {
+      // Lance le téléchargement du vrai installeur, puis guide l'utilisateur.
+      const a = document.createElement("a");
+      a.href = DOWNLOAD_URL_WINDOWS;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setModal({ started: true });
+    } else {
+      setModal({ started: false });
     }
   };
 
   return (
-    <InstallContext.Provider value={{ requestInstall, canInstall, installed }}>
+    <InstallContext.Provider value={{ requestInstall }}>
       {children}
-      {modalOpen && <InstallModal onClose={() => setModalOpen(false)} />}
-      {showToast && <InstalledToast onClose={() => setShowToast(false)} />}
+      {modal && <DownloadModal started={modal.started} onClose={() => setModal(null)} />}
     </InstallContext.Provider>
   );
 }
 
 // ---------- Boutons CTA ----------
 export function PrimaryCta({ children, className = "" }: { children: ReactNode; className?: string }) {
-  const { requestInstall, installed } = useInstall();
+  const { requestInstall } = useInstall();
   return (
     <button
       onClick={requestInstall}
       className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-sauge-fonce px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-sauge-fonce/20 transition hover:-translate-y-0.5 hover:opacity-95 active:translate-y-0 ${className}`}
     >
-      {installed ? (
-        <>
-          <MousePointerClick className="h-4 w-4" aria-hidden />
-          Ouvrir Movaé
-        </>
-      ) : (
-        <>
-          <Download className="h-4 w-4" aria-hidden />
-          {children}
-        </>
-      )}
+      <Download className="h-4 w-4" aria-hidden />
+      {children}
     </button>
   );
 }

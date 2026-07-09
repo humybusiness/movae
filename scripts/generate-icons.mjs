@@ -151,9 +151,50 @@ function renderOg(w, h) {
   return encodePng(w, h, buf);
 }
 
+// Conteneur .ico (Windows / electron-builder) embarquant un PNG 256 px.
+function encodeIco(pngBuffers) {
+  const count = pngBuffers.length;
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2); // type icône
+  header.writeUInt16LE(count, 4);
+  const entries = [];
+  const datas = [];
+  let offset = 6 + 16 * count;
+  for (const { size, png } of pngBuffers) {
+    const e = Buffer.alloc(16);
+    e[0] = size >= 256 ? 0 : size;
+    e[1] = size >= 256 ? 0 : size;
+    e[2] = 0; // palette
+    e[3] = 0; // réservé
+    e.writeUInt16LE(1, 4); // plans
+    e.writeUInt16LE(32, 6); // bits/pixel
+    e.writeUInt32LE(png.length, 8);
+    e.writeUInt32LE(offset, 12);
+    entries.push(e);
+    datas.push(png);
+    offset += png.length;
+  }
+  return Buffer.concat([header, ...entries, ...datas]);
+}
+
 writeFileSync(join(outDir, "icon-192.png"), renderIcon(192, { cornerRatio: 0.22, motifScale: 0.62, opaqueSquare: false }));
 writeFileSync(join(outDir, "icon-512.png"), renderIcon(512, { cornerRatio: 0.22, motifScale: 0.62, opaqueSquare: false }));
 writeFileSync(join(outDir, "icon-maskable-512.png"), renderIcon(512, { cornerRatio: 0, motifScale: 0.46, opaqueSquare: true }));
 writeFileSync(join(outDir, "apple-touch-icon.png"), renderIcon(180, { cornerRatio: 0, motifScale: 0.56, opaqueSquare: true }));
 writeFileSync(join(root, "public", "og-image.png"), renderOg(1200, 630));
-console.log("Icônes générées dans public/icons et public/og-image.png");
+
+// Icônes de l'application de bureau (installeur + barre des tâches)
+const buildDir = join(root, "build-assets");
+mkdirSync(buildDir, { recursive: true });
+writeFileSync(
+  join(buildDir, "icon.ico"),
+  encodeIco([
+    { size: 256, png: renderIcon(256, { cornerRatio: 0.22, motifScale: 0.62, opaqueSquare: false }) },
+    { size: 64, png: renderIcon(64, { cornerRatio: 0.22, motifScale: 0.62, opaqueSquare: false }) },
+    { size: 32, png: renderIcon(32, { cornerRatio: 0.22, motifScale: 0.62, opaqueSquare: false }) },
+    { size: 16, png: renderIcon(16, { cornerRatio: 0.22, motifScale: 0.7, opaqueSquare: false }) },
+  ]),
+);
+writeFileSync(join(buildDir, "icon-256.png"), renderIcon(256, { cornerRatio: 0.22, motifScale: 0.62, opaqueSquare: false }));
+console.log("Icônes générées : public/icons, public/og-image.png, build-assets/icon.ico");

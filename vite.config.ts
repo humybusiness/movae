@@ -3,11 +3,18 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
-export default defineConfig({
+// Deux cibles de build :
+//  - web (défaut)      → dist/          : site vitrine + démo, déployé sur Vercel
+//  - desktop (--mode desktop) → dist-desktop/ : chargé par Electron (chemins relatifs, pas de service worker)
+export default defineConfig(({ mode }) => ({
+  base: mode === "desktop" ? "./" : "/",
+  build: mode === "desktop" ? { outDir: "dist-desktop" } : {},
   plugins: [
     react(),
     tailwindcss(),
-    VitePWA({
+    ...(mode === "desktop"
+      ? []
+      : [VitePWA({
       registerType: "autoUpdate",
       injectRegister: "auto",
       includeAssets: ["favicon.svg", "og-image.png", "icons/apple-touch-icon.png"],
@@ -48,6 +55,6 @@ export default defineConfig({
         navigateFallback: "/index.html",
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
-    }),
+        })]),
   ],
-});
+}));

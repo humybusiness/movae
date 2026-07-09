@@ -9,8 +9,8 @@ export function ProgramsView({ onStart }: { onStart: (queue: Exercise[]) => void
   return (
     <div>
       <SectionTitle
-        title="Programmes guidés"
-        subtitle="Des enchaînements courts pensés pour les moments clés de la journée."
+        title={`Programmes guidés — ${PROGRAMS.length} rituels`}
+        subtitle="Des enchaînements courts pensés pour les moments et situations clés de la journée."
       />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {PROGRAMS.map((p) => {
@@ -27,6 +27,7 @@ export function ProgramsView({ onStart }: { onStart: (queue: Exercise[]) => void
                   </Chip>
                 ))}
                 <Chip>{formatDuration(totalSec)}</Chip>
+                {p.discret && <Chip tone="warm">Discret</Chip>}
               </div>
               <h3 className="font-display mt-3 text-xl font-semibold tracking-tight">{p.name}</h3>
               <p className="mt-1 text-sm text-[var(--m-ink2)]">{p.tagline}</p>

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Loader2, Lock, Mail, User } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { DISCLAIMER } from "../../lib/constants";
+import { isDesktop } from "../../lib/desktop";
 
 function GoogleGlyph() {
   return (
@@ -81,20 +82,27 @@ export function Login() {
               : "Sauvegardez votre progression et synchronisez vos appareils."}
           </p>
 
-          <button
-            onClick={() => run("google", signInWithGoogle)}
-            disabled={busy !== null}
-            className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-xl border border-[var(--m-line)] bg-white px-4 py-3 text-sm font-semibold text-[#1E2420] transition hover:bg-[var(--m-bg2)] disabled:opacity-60"
-          >
-            {busy === "google" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <GoogleGlyph />}
-            Continuer avec Google
-          </button>
+          {/* La connexion Google par popup n'est pas autorisée par Google dans
+              les applications de bureau : on la propose sur le web uniquement. */}
+          {!isDesktop() && (
+            <>
+              <button
+                onClick={() => run("google", signInWithGoogle)}
+                disabled={busy !== null}
+                className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-xl border border-[var(--m-line)] bg-white px-4 py-3 text-sm font-semibold text-[#1E2420] transition hover:bg-[var(--m-bg2)] disabled:opacity-60"
+              >
+                {busy === "google" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <GoogleGlyph />}
+                Continuer avec Google
+              </button>
 
-          <div className="my-5 flex items-center gap-3 text-xs font-medium text-[var(--m-ink2)]">
-            <span className="h-px flex-1 bg-[var(--m-line)]" />
-            ou par e-mail
-            <span className="h-px flex-1 bg-[var(--m-line)]" />
-          </div>
+              <div className="my-5 flex items-center gap-3 text-xs font-medium text-[var(--m-ink2)]">
+                <span className="h-px flex-1 bg-[var(--m-line)]" />
+                ou par e-mail
+                <span className="h-px flex-1 bg-[var(--m-line)]" />
+              </div>
+            </>
+          )}
+          {isDesktop() && <div className="mt-6" />}
 
           <form
             onSubmit={(e) => {

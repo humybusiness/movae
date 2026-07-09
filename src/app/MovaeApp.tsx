@@ -31,6 +31,7 @@ import { ProgressView } from "./views/ProgressView";
 import { RewardsView } from "./views/RewardsView";
 import { SettingsView } from "./views/SettingsView";
 import { showNotification } from "../lib/notify";
+import { systemIdleSeconds } from "../lib/desktop";
 
 type ViewId = "accueil" | "exercices" | "programmes" | "progression" | "recompenses" | "reglages";
 
@@ -166,19 +167,25 @@ function AppInner() {
 
   // ---- Tick du moteur ----
   useEffect(() => {
-    const tick = () => {
+    const tick = async () => {
       const t = Date.now();
+      // Version bureau : inactivité mesurée à l'échelle du système entier
+      // (toutes applications). Version web : activité dans l'onglet.
+      const sysIdle = await systemIdleSeconds();
       const idle =
-        document.visibilityState === "visible" && t - lastInputAt.current > IDLE_AFTER_MS;
+        sysIdle !== null
+          ? sysIdle * 1000 > IDLE_AFTER_MS
+          : document.visibilityState === "visible" && t - lastInputAt.current > IDLE_AFTER_MS;
       dispatch({ type: "tick", now: t, idle });
       setNow(t);
     };
-    tick();
-    const interval = setInterval(tick, TICK_MS);
-    document.addEventListener("visibilitychange", tick);
+    void tick();
+    const interval = setInterval(() => void tick(), TICK_MS);
+    const onVisible = () => void tick();
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       clearInterval(interval);
-      document.removeEventListener("visibilitychange", tick);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [dispatch]);
 
@@ -365,6 +372,11 @@ function AppInner() {
             const ex = exerciseById(exercise.id) ?? exercise;
             dispatch({ type: "complete-break", exercise: ex, now: Date.now(), actualSec });
           }}
+          onFeedback={
+            state.prefs.smartMode
+              ? (exerciseId, up) => dispatch({ type: "exercise-feedback", exerciseId, up })
+              : undefined
+          }
           onClose={() => setQueue(null)}
         />
       )}

@@ -62,6 +62,27 @@ export interface DayStats {
   index: number;
 }
 
+// ---------- Apprentissages du moteur adaptatif (100 % locaux) ----------
+
+export interface HourStat {
+  prop: number; // pauses proposées à cette heure
+  acc: number; // pauses effectivement prises après proposition
+}
+
+export interface ExerciseFeedback {
+  up: number;
+  down: number;
+  done: number;
+  lastTs: number; // dernière réalisation (pour la variété)
+}
+
+export interface Insights {
+  hourly: Record<string, HourStat>; // clé = heure "8".."19"
+  exFeedback: Record<string, ExerciseFeedback>;
+  pendingRecAt: number | null; // proposition en attente de réponse
+  cadenceAuto: number | null; // rythme réellement observé (EMA, minutes)
+}
+
 export interface MovaeState {
   version: 1;
   onboarded: boolean;
@@ -76,6 +97,7 @@ export interface MovaeState {
     indexStyle: IndexStyleId;
     notifications: boolean;
     eyeRule: boolean; // règle 20-20-20
+    smartMode: boolean; // moteur adaptatif (apprentissage local) vs cadence fixe
   };
   session: {
     status: SessionStatus;
@@ -87,6 +109,7 @@ export interface MovaeState {
     snoozedUntil: number | null;
   };
   strain: Record<Zone, number>; // sollicitation estimée 0–100 par zone
+  insights: Insights;
   history: BreakLog[];
   days: Record<string, DayStats>;
   streak: { current: number; best: number; lastDay: string | null };

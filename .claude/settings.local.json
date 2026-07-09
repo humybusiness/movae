@@ -11,7 +11,14 @@
       "Bash(npm run *)",
       "Bash(git push *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "PowerShell(Remove-Item \"C:\\\\Users\\\\hug00\\\\Documents\\\\Movea\\\\src\\\\app\\\\components\\\\FigureVisual.tsx\" -Confirm:$false)",
+      "PowerShell(npm run build 2>&1)",
+      "PowerShell(npm install -D electron electron-builder)",
+      "PowerShell(Remove-Item \"C:\\\\Users\\\\hug00\\\\Documents\\\\Movea\\\\src\\\\lib\\\\installPrompt.ts\" -Confirm:$false)",
+      "PowerShell(npm run desktop:build)",
+      "PowerShell(Get-ChildItem release | Where-Object { $_.Name -match \"exe|yml\" } | Select-Object Name, @{N=\"MB\";E={[math]::Round\\($_.Length/1MB,1\\)}})",
+      "PowerShell(Start-Process \"C:\\\\Users\\\\hug00\\\\Documents\\\\Movea\\\\release\\\\win-unpacked\\\\Movae.exe\"; Start-Sleep -Seconds 6; $p = Get-Process -Name \"Movae\" -ErrorAction SilentlyContinue; if \\($p\\) { \"Movaé tourne : $\\($p.Count\\) processus, fenêtre : $\\(\\($p | Where-Object {$_.MainWindowTitle}\\).MainWindowTitle\\)\" } else { \"PROCESS_NOT_RUNNING\" })"
     ]
   }
 }

@@ -139,6 +139,9 @@ body {
   0%, 100% { opacity: 0.55; }
   50% { opacity: 1; }
 }
+@keyframes m-arrow-dash {
+  to { stroke-dashoffset: -18; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   html {

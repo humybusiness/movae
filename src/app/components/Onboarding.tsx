@@ -1,5 +1,16 @@
 import { useState } from "react";
-import { ArrowRight, Bell, BellOff, Keyboard, Video, Shuffle, BookOpen } from "lucide-react";
+import {
+  ArrowRight,
+  Bell,
+  BellOff,
+  BookOpen,
+  Brain,
+  Check,
+  Keyboard,
+  Shuffle,
+  Timer,
+  Video,
+} from "lucide-react";
 import { MButton } from "./ui";
 import { requestNotificationPermission } from "../../lib/notify";
 import { DISCLAIMER } from "../../lib/constants";
@@ -30,6 +41,7 @@ export function Onboarding({
     cadenceMin: number;
     goal: number;
     notifications: boolean;
+    smartMode: boolean;
   }) => void;
 }) {
   const [step, setStep] = useState(0);
@@ -37,9 +49,10 @@ export function Onboarding({
   const [style, setStyle] = useState<WorkStyle>("mixte");
   const [cadenceMin, setCadenceMin] = useState(45);
   const [goal, setGoal] = useState(6);
+  const [smartMode, setSmartMode] = useState(true);
 
   const finish = (notifications: boolean) =>
-    onDone({ name: name.trim(), style, cadenceMin, goal, notifications });
+    onDone({ name: name.trim(), style, cadenceMin, goal, notifications, smartMode });
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
@@ -48,7 +61,7 @@ export function Onboarding({
         style={{ boxShadow: "var(--m-shadow)" }}
       >
         <div className="mb-8 flex items-center gap-2" aria-hidden>
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
               className={`h-1.5 flex-1 rounded-full transition ${
@@ -152,6 +165,63 @@ export function Onboarding({
         )}
 
         {step === 2 && (
+          <div>
+            <h2 className="font-display text-2xl font-semibold tracking-tight">
+              Comment Movaé doit-il réfléchir ?
+            </h2>
+            <p className="mt-2 text-sm text-[var(--m-ink2)]">
+              Vous choisissez — et vous pourrez changer d'avis à tout moment dans les réglages.
+            </p>
+            <div className="mt-5 grid gap-3">
+              <button
+                onClick={() => setSmartMode(true)}
+                aria-pressed={smartMode}
+                className={`rounded-2xl border p-4 text-left transition ${
+                  smartMode
+                    ? "border-[var(--m-accent)] bg-[var(--m-soft)]"
+                    : "border-[var(--m-line)] hover:border-[var(--m-accent)]/50"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-[var(--m-strong)]" aria-hidden />
+                  <p className="text-sm font-bold">Moteur intelligent (recommandé)</p>
+                  {smartMode && <Check className="ml-auto h-4 w-4 text-[var(--m-strong)]" aria-hidden />}
+                </div>
+                <ul className="mt-2 space-y-1 text-xs text-[var(--m-ink2)]">
+                  <li>• Apprend les heures où vous répondez aux pauses — et protège vos phases de concentration.</li>
+                  <li>• Ajuste doucement le rythme à votre cadence réelle (± 15 min autour de votre réglage).</li>
+                  <li>• Retient les exercices qui vous font du bien (vos 👍/👎) et varie les propositions.</li>
+                  <li className="font-semibold text-[var(--m-ink)]">
+                    Tout est stocké sur votre appareil (ou votre compte). Aucune caméra, aucun contenu de travail analysé.
+                  </li>
+                </ul>
+              </button>
+              <button
+                onClick={() => setSmartMode(false)}
+                aria-pressed={!smartMode}
+                className={`rounded-2xl border p-4 text-left transition ${
+                  !smartMode
+                    ? "border-[var(--m-accent)] bg-[var(--m-soft)]"
+                    : "border-[var(--m-line)] hover:border-[var(--m-accent)]/50"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Timer className="h-5 w-5 text-[var(--m-strong)]" aria-hidden />
+                  <p className="text-sm font-bold">Mode simple</p>
+                  {!smartMode && <Check className="ml-auto h-4 w-4 text-[var(--m-strong)]" aria-hidden />}
+                </div>
+                <p className="mt-2 text-xs text-[var(--m-ink2)]">
+                  Des rappels à cadence fixe, sans aucun apprentissage. Movaé reste un simple minuteur intelligent.
+                </p>
+              </button>
+            </div>
+            <MButton className="mt-6 w-full" onClick={() => setStep(3)}>
+              Continuer <ArrowRight className="h-4 w-4" aria-hidden />
+            </MButton>
+          </div>
+        )}
+
+        {step === 3 && (
           <div>
             <h2 className="font-display text-2xl font-semibold tracking-tight">
               Des rappels doux ?

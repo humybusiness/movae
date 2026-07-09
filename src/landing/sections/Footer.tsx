@@ -1,6 +1,5 @@
-import { Link } from "react-router-dom";
 import { Container, Logo } from "../shared";
-import { APP_URL, CONTACT_EMAIL, DISCLAIMER } from "../../lib/constants";
+import { CONTACT_EMAIL, DISCLAIMER } from "../../lib/constants";
 
 export function Footer() {
   return (
@@ -22,9 +21,6 @@ export function Footer() {
             <a href="#kines" className="text-encre-2 transition hover:text-encre">Kinés</a>
             <a href="#entreprises" className="text-encre-2 transition hover:text-encre">Entreprises</a>
             <a href="#faq" className="text-encre-2 transition hover:text-encre">FAQ</a>
-            <Link to={APP_URL} className="font-semibold text-sauge-fonce transition hover:opacity-75">
-              Ouvrir l’app
-            </Link>
             <a href={`mailto:${CONTACT_EMAIL}`} className="text-encre-2 transition hover:text-encre">
               Contact
             </a>

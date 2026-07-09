@@ -9,7 +9,13 @@ import {
 } from "react";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import type { Exercise } from "../data/exercises";
-import { applyBreak, applyTick, emptyStrain } from "../engine/engine";
+import {
+  applyBreak,
+  applyExerciseFeedback,
+  applyTick,
+  emptyInsights,
+  emptyStrain,
+} from "../engine/engine";
 import { useAuth } from "../auth/AuthProvider";
 import { db } from "../../lib/firebase";
 import { dayKey } from "../../lib/time";
@@ -27,7 +33,13 @@ export function defaultState(): MovaeState {
     version: 1,
     onboarded: false,
     profile: { name: "", style: "mixte", cadenceMin: 45, goal: 6 },
-    prefs: { theme: "sauge", indexStyle: "anneau", notifications: false, eyeRule: true },
+    prefs: {
+      theme: "sauge",
+      indexStyle: "anneau",
+      notifications: false,
+      eyeRule: true,
+      smartMode: true,
+    },
     session: {
       status: "off",
       startedAt: null,
@@ -38,6 +50,7 @@ export function defaultState(): MovaeState {
       snoozedUntil: null,
     },
     strain: emptyStrain(),
+    insights: emptyInsights(),
     history: [],
     days: {},
     streak: { current: 0, best: 0, lastDay: null },
@@ -56,6 +69,12 @@ function hydrateState(parsed: Partial<MovaeState>): MovaeState {
     prefs: { ...base.prefs, ...parsed.prefs },
     session: { ...base.session, ...parsed.session },
     strain: { ...base.strain, ...parsed.strain },
+    insights: {
+      ...base.insights,
+      ...parsed.insights,
+      hourly: { ...base.insights.hourly, ...parsed.insights?.hourly },
+      exFeedback: { ...base.insights.exFeedback, ...parsed.insights?.exFeedback },
+    },
     streak: { ...base.streak, ...parsed.streak },
     totals: { ...base.totals, ...parsed.totals },
   };
@@ -99,6 +118,7 @@ export type Action =
       cadenceMin: number;
       goal: number;
       notifications: boolean;
+      smartMode: boolean;
     }
   | { type: "set-profile"; patch: Partial<MovaeState["profile"]> }
   | { type: "set-prefs"; patch: Partial<MovaeState["prefs"]> }
@@ -111,6 +131,8 @@ export type Action =
   | { type: "complete-break"; exercise: Exercise; now: number; actualSec: number }
   | { type: "snooze"; until: number }
   | { type: "notified"; now: number }
+  | { type: "exercise-feedback"; exerciseId: string; up: boolean }
+  | { type: "clear-insights" }
   | { type: "hydrate"; state: MovaeState }
   | { type: "reset" };
 
@@ -127,7 +149,11 @@ function reducer(state: MovaeState, action: Action): MovaeState {
           cadenceMin: action.cadenceMin,
           goal: action.goal,
         },
-        prefs: { ...state.prefs, notifications: action.notifications },
+        prefs: {
+          ...state.prefs,
+          notifications: action.notifications,
+          smartMode: action.smartMode,
+        },
       };
     case "set-profile":
       return { ...state, profile: { ...state.profile, ...action.patch } };
@@ -173,6 +199,10 @@ function reducer(state: MovaeState, action: Action): MovaeState {
       return { ...state, session: { ...state.session, snoozedUntil: action.until } };
     case "notified":
       return { ...state, session: { ...state.session, lastNotifyAt: action.now } };
+    case "exercise-feedback":
+      return applyExerciseFeedback(state, action.exerciseId, action.up);
+    case "clear-insights":
+      return { ...state, insights: emptyInsights() };
     case "hydrate":
       return action.state;
     case "reset":
