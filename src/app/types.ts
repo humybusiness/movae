@@ -32,6 +32,19 @@ export const ZONE_LABELS: Record<Zone, string> = {
   energie: "Énergie",
 };
 
+// Couleur signature de chaque zone du corps — utilisée partout (chips, barres,
+// carte du corps) pour une lecture instantanée, sans texte superflu.
+export const ZONE_COLORS: Record<Zone, string> = {
+  yeux: "#4E7FA8",
+  nuque: "#C07A5B",
+  epaules: "#8E6FB0",
+  dos: "#4F755D",
+  poignets: "#B98E3E",
+  hanches: "#B0607A",
+  jambes: "#5B8A96",
+  energie: "#D07A2E",
+};
+
 export type WorkStyle = "clavier" | "visio" | "mixte" | "lecture";
 
 export const WORK_STYLE_LABELS: Record<WorkStyle, string> = {

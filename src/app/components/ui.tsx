@@ -42,10 +42,12 @@ export function MButton({
 export function Chip({
   children,
   tone = "neutral",
+  color,
   className = "",
 }: {
   children: ReactNode;
   tone?: "neutral" | "accent" | "warm";
+  color?: string; // couleur de zone : pastille + teinte dédiées
   className?: string;
 }) {
   const tones = {
@@ -53,6 +55,17 @@ export function Chip({
     accent: "border-transparent bg-[var(--m-soft)] text-[var(--m-strong)]",
     warm: "border-transparent bg-[#C9A86A]/15 text-[#8F7443]",
   };
+  if (color) {
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full border border-transparent px-2.5 py-1 text-xs font-bold ${className}`}
+        style={{ background: `${color}1f`, color }}
+      >
+        <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} aria-hidden />
+        {children}
+      </span>
+    );
+  }
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${tones[tone]} ${className}`}

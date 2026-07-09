@@ -65,14 +65,6 @@ function Logo({ size = 30 }: { size?: number }) {
   );
 }
 
-function greeting(name: string, now: number): string {
-  const h = new Date(now).getHours();
-  const who = name ? `, ${name}` : "";
-  if (h < 12) return `Bonjour${who}`;
-  if (h < 18) return `Bon après-midi${who}`;
-  return `Bonsoir${who}`;
-}
-
 function AccountBadge({ compact = false }: { compact?: boolean }) {
   const { authEnabled, user, logout } = useAuth();
   if (!authEnabled) return null;
@@ -138,7 +130,6 @@ function AppInner() {
   const theme = themeById(state.prefs.theme);
   const working = state.session.status === "working";
   const away = state.session.status === "away";
-  const displayName = state.profile.name || user?.name || "";
 
   // ---- Suivi d'activité (souris / clavier, local uniquement) ----
   useEffect(() => {
@@ -290,8 +281,8 @@ function AppInner() {
                 <Logo size={26} />
                 <span className="font-display text-lg font-semibold">Movaé</span>
               </div>
-              <p className="hidden text-sm font-semibold lg:block">
-                {greeting(displayName, now)}
+              <p className="hidden items-center gap-2 text-sm font-semibold lg:flex">
+                <span className="font-display text-base">Movaé</span>
               </p>
               <div className="flex items-center gap-2">
                 <span className="lg:hidden">

@@ -21,7 +21,12 @@
       "PowerShell(Start-Process \"C:\\\\Users\\\\hug00\\\\Documents\\\\Movea\\\\release\\\\win-unpacked\\\\Movae.exe\"; Start-Sleep -Seconds 6; $p = Get-Process -Name \"Movae\" -ErrorAction SilentlyContinue; if \\($p\\) { \"Movaé tourne : $\\($p.Count\\) processus, fenêtre : $\\(\\($p | Where-Object {$_.MainWindowTitle}\\).MainWindowTitle\\)\" } else { \"PROCESS_NOT_RUNNING\" })",
       "PowerShell(git add -A)",
       "PowerShell(git commit -m \"Etudiants kines, validation stricte des pauses \\(minuteur au bout + anti-triche focus\\), DA unifiee des figures, defi du jour, conseil kine, niveaux, 16 nouvelles recompenses, theme Ocean\" 2>&1)",
-      "PowerShell(git push 2>&1)"
+      "PowerShell(git push 2>&1)",
+      "PowerShell(Get-Process -Name \"Movae\" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; try { Remove-Item -Recurse -Force \"C:\\\\Users\\\\hug00\\\\Documents\\\\Movea\\\\release\" -ErrorAction Stop; \"release supprime\" } catch { \"suppression partielle: $\\($_.Exception.Message\\)\" })",
+      "PowerShell($doc = [Environment]::GetFolderPath\\(\"MyDocuments\"\\); \"MyDocuments = $doc\"; \\(Get-Item \"C:\\\\Users\\\\hug00\\\\Documents\\\\Movea\"\\).Attributes; Get-Process -Name \"OneDrive\" -ErrorAction SilentlyContinue | Select-Object -First 1 Name; Get-Process -Name \"Movae\" -ErrorAction SilentlyContinue | Measure-Object | Select-Object Count)",
+      "PowerShell(Get-ChildItem \"$env:LOCALAPPDATA\\\\movae-release\" -ErrorAction SilentlyContinue | Select-Object Name, @{N=\"MB\";E={[math]::Round\\($_.Length/1MB,1\\)}}, LastWriteTime)",
+      "PowerShell(explorer.exe /select,\"$env:LOCALAPPDATA\\\\movae-release\\\\Movae-Setup.exe\")",
+      "PowerShell(explorer.exe /select,\"$env:USERPROFILE\\\\Desktop\\\\Movae-Setup.exe\")"
     ]
   }
 }

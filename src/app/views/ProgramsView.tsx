@@ -2,7 +2,7 @@ import { Play } from "lucide-react";
 import { PROGRAMS } from "../data/programs";
 import { exerciseById, type Exercise } from "../data/exercises";
 import { Chip, MButton, MCard, SectionTitle } from "../components/ui";
-import { ZONE_LABELS } from "../types";
+import { ZONE_COLORS, ZONE_LABELS } from "../types";
 import { formatDuration } from "../../lib/time";
 
 export function ProgramsView({ onStart }: { onStart: (queue: Exercise[]) => void }) {
@@ -22,7 +22,7 @@ export function ProgramsView({ onStart }: { onStart: (queue: Exercise[]) => void
             <MCard key={p.id} className="flex flex-col p-6 transition hover:-translate-y-0.5">
               <div className="flex flex-wrap gap-1.5">
                 {p.zones.map((z) => (
-                  <Chip key={z} tone="accent">
+                  <Chip key={z} color={ZONE_COLORS[z]}>
                     {ZONE_LABELS[z]}
                   </Chip>
                 ))}

@@ -3,7 +3,7 @@ import { EyeOff, Play, Search } from "lucide-react";
 import { EXERCISES, type Exercise } from "../data/exercises";
 import { ExerciseFigure } from "../components/ExerciseFigure";
 import { Chip, MButton, MCard, SectionTitle } from "../components/ui";
-import { ZONE_LABELS, ZONES, type Zone } from "../types";
+import { ZONE_COLORS, ZONE_LABELS, ZONES, type Zone } from "../types";
 import { formatDuration } from "../../lib/time";
 
 const DISCRETION_LABELS = { 1: "Invisible", 2: "Discret", 3: "Visible" } as const;
@@ -120,7 +120,7 @@ export function ExercisesView({ onStart }: { onStart: (queue: Exercise[]) => voi
                   <p className="mt-0.5 text-xs font-semibold text-[var(--m-strong)]">{ex.reps}</p>
                   <div className="mt-2 flex flex-wrap gap-1">
                     {ex.zones.map((z) => (
-                      <Chip key={z} tone="accent">
+                      <Chip key={z} color={ZONE_COLORS[z]}>
                         {ZONE_LABELS[z]}
                       </Chip>
                     ))}

@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Container, Logo } from "../shared";
 import { CONTACT_EMAIL, DISCLAIMER } from "../../lib/constants";
 
@@ -24,6 +25,9 @@ export function Footer() {
             <a href={`mailto:${CONTACT_EMAIL}`} className="text-encre-2 transition hover:text-encre">
               Contact
             </a>
+            <Link to="/mentions" className="text-encre-2 transition hover:text-encre">
+              Mentions légales & confidentialité
+            </Link>
           </nav>
         </div>
         <p className="mt-10 border-t border-ligne pt-6 text-xs leading-relaxed text-encre-2">

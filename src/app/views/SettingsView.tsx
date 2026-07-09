@@ -287,6 +287,12 @@ export function SettingsView() {
       </MCard>
 
       <p className="mt-6 text-xs leading-relaxed text-[var(--m-ink2)]">{DISCLAIMER}</p>
+      <p className="mt-2 text-xs leading-relaxed text-[var(--m-ink2)]">
+        Mentions légales et politique de confidentialité complètes : page « Mentions
+        légales » du site Movaé. Aucune caméra, aucun enregistrement de frappe, aucune
+        donnée médicale — l’inactivité clavier/souris n’est mesurée que pour estimer vos
+        temps de travail.
+      </p>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { isDesktop } from "./lib/desktop";
 // Découpage par route : la landing reste légère, Firebase et l'app ne se
 // chargent que lorsqu'on ouvre /app.
 const LandingPage = lazy(() => import("./landing/LandingPage"));
+const LegalPage = lazy(() => import("./landing/LegalPage"));
 const MovaeApp = lazy(() => import("./app/MovaeApp"));
 
 function Fallback() {
@@ -35,6 +36,7 @@ export default function App() {
       <Suspense fallback={<Fallback />}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/mentions" element={<LegalPage />} />
           <Route path="/app/*" element={<MovaeApp />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

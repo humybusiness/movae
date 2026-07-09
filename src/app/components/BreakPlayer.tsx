@@ -13,7 +13,7 @@ import {
 import type { Exercise } from "../data/exercises";
 import { ExerciseFigure } from "./ExerciseFigure";
 import { Chip, MButton } from "./ui";
-import { ZONE_LABELS } from "../types";
+import { ZONE_COLORS, ZONE_LABELS } from "../types";
 import { formatDuration } from "../../lib/time";
 
 // Lecteur de pause guidée.
@@ -231,7 +231,7 @@ export function BreakPlayer({
                 </h2>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {exercise.zones.map((z) => (
-                    <Chip key={z} tone="accent">
+                    <Chip key={z} color={ZONE_COLORS[z]}>
                       {ZONE_LABELS[z]}
                     </Chip>
                   ))}
