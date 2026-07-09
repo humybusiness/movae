@@ -19,7 +19,7 @@ export function Footer() {
           <nav className="flex flex-wrap gap-x-8 gap-y-3 text-sm" aria-label="Liens de pied de page">
             <a href="#probleme" className="text-encre-2 transition hover:text-encre">Problème</a>
             <a href="#fonctionnement" className="text-encre-2 transition hover:text-encre">Fonctionnement</a>
-            <a href="#kines" className="text-encre-2 transition hover:text-encre">Kinés</a>
+            <a href="#kines" className="text-encre-2 transition hover:text-encre">L’équipe</a>
             <a href="#entreprises" className="text-encre-2 transition hover:text-encre">Entreprises</a>
             <a href="#faq" className="text-encre-2 transition hover:text-encre">FAQ</a>
             <a href={`mailto:${CONTACT_EMAIL}`} className="text-encre-2 transition hover:text-encre">

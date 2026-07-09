@@ -3,7 +3,7 @@ import { Container, Logo, useInstall } from "../shared";
 const LINKS = [
   { href: "#probleme", label: "Problème" },
   { href: "#fonctionnement", label: "Fonctionnement" },
-  { href: "#kines", label: "Kinés" },
+  { href: "#kines", label: "L’équipe" },
   { href: "#entreprises", label: "Entreprises" },
   { href: "#faq", label: "FAQ" },
 ];
