@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "icons": "node scripts/generate-icons.mjs",
     "desktop:dev": "vite build --mode desktop && electron .",
-    "desktop:build": "tsc --noEmit -p tsconfig.json && vite build --mode desktop && electron-builder --win"
+    "desktop:build": "tsc --noEmit -p tsconfig.json && vite build --mode desktop && electron-builder --win -c.directories.output=%LOCALAPPDATA%/movae-release"
   },
   "build": {
     "appId": "fr.movae.app",

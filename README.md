@@ -17,11 +17,15 @@ La route `/app` reste disponible en version navigateur (démo et développement)
 
 ```bash
 npm run desktop:dev     # build + lance Electron en local
-npm run desktop:build   # produit release/Movae-Setup.exe (installeur Windows)
+npm run desktop:build   # produit %LOCALAPPDATA%\movae-release\Movae-Setup.exe
 ```
 
+L’installeur est généré hors du dossier Documents (dans
+`C:\Users\<vous>\AppData\Local\movae-release\`) pour éviter les verrous
+antivirus/OneDrive pendant le build.
+
 **Publier une nouvelle version** : montez `version` dans package.json, lancez
-`npm run desktop:build`, puis uploadez `release/Movae-Setup.exe` dans une release
+`npm run desktop:build`, puis uploadez `Movae-Setup.exe` dans une release
 GitHub (https://github.com/humybusiness/movae/releases → *Draft a new release*).
 Le bouton « Télécharger » du site pointe en permanence vers
 `releases/latest/download/Movae-Setup.exe` — publier une release suffit.
