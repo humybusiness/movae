@@ -60,18 +60,21 @@ const FOND = hex("#F7F7F2");
 const LIGNE = hex("#E5E7E0");
 
 // Trois barres arrondies ascendantes = motif Movaé.
-function barsSd(px, py, cx, cy, scale) {
-  const bars = [
-    { x: -0.28, top: 0.03, bottom: 0.28 },
-    { x: 0.0, top: -0.1, bottom: 0.28 },
-    { x: 0.28, top: -0.26, bottom: 0.28 },
-  ];
+// « droop » (0..1) : les barres s'affaissent — le logo devient l'état du corps.
+const BASE_BARS = [
+  { x: -0.28, top: 0.03, bottom: 0.28 },
+  { x: 0.0, top: -0.1, bottom: 0.28 },
+  { x: 0.28, top: -0.26, bottom: 0.28 },
+];
+
+function barsSd(px, py, cx, cy, scale, droop = 0) {
   let d = Infinity;
   const hw = 0.065 * scale;
-  for (const b of bars) {
+  for (const b of BASE_BARS) {
+    const top = b.top + (b.bottom - 0.1 - b.top) * droop; // les barres se tassent
     const bx = cx + b.x * scale;
-    const byC = cy + ((b.top + b.bottom) / 2) * scale;
-    const bhh = ((b.bottom - b.top) / 2) * scale;
+    const byC = cy + ((top + b.bottom) / 2) * scale;
+    const bhh = Math.max(hw / scale, (b.bottom - top) / 2) * scale;
     d = Math.min(d, sdRoundRect(px, py, bx, byC, hw, bhh, hw));
   }
   return d;
@@ -197,4 +200,49 @@ writeFileSync(
   ]),
 );
 writeFileSync(join(buildDir, "icon-256.png"), renderIcon(256, { cornerRatio: 0.22, motifScale: 0.62, opaqueSquare: false }));
-console.log("Icônes générées : public/icons, public/og-image.png, build-assets/icon.ico");
+
+// ---------- Icônes de tray « vivantes » : le logo se tasse avec vous ----------
+const AMBRE = hex("#C9A86A");
+const AMBRE_FONCE = hex("#A87B3F");
+
+function renderTray(size, droop, warm) {
+  const buf = Buffer.alloc(size * size * 4);
+  const c = size / 2;
+  const r = size * 0.22;
+  const c1 = warm === 0 ? SAGE : warm === 1 ? SAGE : AMBRE;
+  const c2 = warm === 0 ? SAGE_DARK : warm === 1 ? SAGE_DARK : AMBRE_FONCE;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const px = x + 0.5;
+      const py = y + 0.5;
+      const cover = clamp01(0.5 - sdRoundRect(px, py, c, c, c, c, r));
+      const t = clamp01((px + py) / (2 * size));
+      let cr = c1[0] + (c2[0] - c1[0]) * t;
+      let cg = c1[1] + (c2[1] - c1[1]) * t;
+      let cb = c1[2] + (c2[2] - c1[2]) * t;
+      const bar = clamp01(0.5 - barsSd(px, py, c, c, size * 0.62, droop));
+      cr += (CREAM[0] - cr) * bar;
+      cg += (CREAM[1] - cg) * bar;
+      cb += (CREAM[2] - cb) * bar;
+      const i = (y * size + x) * 4;
+      buf[i] = Math.round(cr);
+      buf[i + 1] = Math.round(cg);
+      buf[i + 2] = Math.round(cb);
+      buf[i + 3] = Math.round(cover * 255);
+    }
+  }
+  return encodePng(size, size, buf);
+}
+
+// 4 états : frais / ok / à bouger / prioritaire
+const TRAY_STATES = [
+  { droop: 0, warm: 0 },
+  { droop: 0.22, warm: 1 },
+  { droop: 0.5, warm: 2 },
+  { droop: 0.78, warm: 2 },
+];
+TRAY_STATES.forEach((s, i) => {
+  writeFileSync(join(buildDir, `tray-${i}.png`), renderTray(32, s.droop, s.warm));
+});
+
+console.log("Icônes générées : public/icons, og-image, icon.ico, tray-0..3");

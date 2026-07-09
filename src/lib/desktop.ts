@@ -6,6 +6,7 @@ interface MovaeDesktopApi {
   getIdleSeconds: () => Promise<number>;
   showWindow: () => Promise<void>;
   getVersion: () => Promise<string>;
+  setTrayState?: (level: number) => Promise<void>;
 }
 
 declare global {
@@ -31,4 +32,9 @@ export async function systemIdleSeconds(): Promise<number | null> {
 
 export function focusDesktopWindow(): void {
   window.movaeDesktop?.showWindow().catch(() => {});
+}
+
+// Icône vivante de la barre des tâches : 0 = frais … 3 = pause prioritaire.
+export function setTrayState(level: number): void {
+  window.movaeDesktop?.setTrayState?.(level).catch(() => {});
 }

@@ -7,4 +7,6 @@ contextBridge.exposeInMainWorld("movaeDesktop", {
   getIdleSeconds: () => ipcRenderer.invoke("movae:idle-seconds"),
   showWindow: () => ipcRenderer.invoke("movae:show-window"),
   getVersion: () => ipcRenderer.invoke("movae:version"),
+  // Icône vivante : niveau 0 (frais) → 3 (pause prioritaire).
+  setTrayState: (level) => ipcRenderer.invoke("movae:set-tray", level),
 });

@@ -26,7 +26,11 @@
       "PowerShell($doc = [Environment]::GetFolderPath\\(\"MyDocuments\"\\); \"MyDocuments = $doc\"; \\(Get-Item \"C:\\\\Users\\\\hug00\\\\Documents\\\\Movea\"\\).Attributes; Get-Process -Name \"OneDrive\" -ErrorAction SilentlyContinue | Select-Object -First 1 Name; Get-Process -Name \"Movae\" -ErrorAction SilentlyContinue | Measure-Object | Select-Object Count)",
       "PowerShell(Get-ChildItem \"$env:LOCALAPPDATA\\\\movae-release\" -ErrorAction SilentlyContinue | Select-Object Name, @{N=\"MB\";E={[math]::Round\\($_.Length/1MB,1\\)}}, LastWriteTime)",
       "PowerShell(explorer.exe /select,\"$env:LOCALAPPDATA\\\\movae-release\\\\Movae-Setup.exe\")",
-      "PowerShell(explorer.exe /select,\"$env:USERPROFILE\\\\Desktop\\\\Movae-Setup.exe\")"
+      "PowerShell(explorer.exe /select,\"$env:USERPROFILE\\\\Desktop\\\\Movae-Setup.exe\")",
+      "PowerShell(Get-Content \"C:\\\\Users\\\\hug00\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-hug00-Documents-Movea\\\\944f219e-4241-4694-84e7-1f3f1f9fac33\\\\tasks\\\\bmg8j98x6.output\" -Tail 1; Get-Item \"$env:LOCALAPPDATA\\\\movae-release\\\\Movae-Setup.exe\" -ErrorAction SilentlyContinue | Select-Object @{N=\"MB\";E={[math]::Round\\($_.Length/1MB,1\\)}}, LastWriteTime)",
+      "PowerShell(Copy-Item \"$env:LOCALAPPDATA\\\\movae-release\\\\Movae-Setup.exe\" -Destination \"$env:USERPROFILE\\\\Desktop\\\\Movae-Setup.exe\" -Force; Copy-Item \"$env:LOCALAPPDATA\\\\movae-release\\\\Movae-Setup.exe\" -Destination \"C:\\\\Users\\\\hug00\\\\Documents\\\\Movea\\\\release\\\\Movae-Setup.exe\" -Force; Get-Item \"$env:USERPROFILE\\\\Desktop\\\\Movae-Setup.exe\" | Select-Object FullName, LastWriteTime)",
+      "PowerShell(npm run icons)",
+      "PowerShell(git commit -m \"Le Jumeau : double corporel vivant \\(posture pilotee par le moteur\\), icone tray vivante \\(logo qui se tasse\\), souffle sonore Web Audio, fresque 12 semaines\" 2>&1)"
     ]
   }
 }

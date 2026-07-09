@@ -69,9 +69,19 @@ function createWindow() {
   });
 }
 
+// Icône vivante : les barres du logo se tassent avec votre corps.
+const TRAY_TOOLTIPS = [
+  "Movaé — rythme frais",
+  "Movaé — tout va bien",
+  "Movaé — une pause serait bienvenue",
+  "Movaé — votre corps réclame une pause",
+];
+const trayImages = [0, 1, 2, 3].map((i) =>
+  nativeImage.createFromPath(path.join(__dirname, "..", "build-assets", `tray-${i}.png`)).resize({ width: 16, height: 16 }),
+);
+
 function createTray() {
-  const image = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
-  tray = new Tray(image);
+  tray = new Tray(trayImages[0]);
   tray.setToolTip("Movaé — pauses actives");
   tray.setContextMenu(
     Menu.buildFromTemplate([
@@ -100,6 +110,14 @@ app.whenReady().then(() => {
     mainWindow.focus();
   });
   ipcMain.handle("movae:version", () => app.getVersion());
+  // Le renderer pousse l'état du corps (0..3) → l'icône du tray se tasse.
+  ipcMain.handle("movae:set-tray", (_event, level) => {
+    const i = Math.max(0, Math.min(3, Number(level) || 0));
+    if (tray) {
+      tray.setImage(trayImages[i]);
+      tray.setToolTip(TRAY_TOOLTIPS[i]);
+    }
+  });
 
   createWindow();
   createTray();

@@ -8,8 +8,11 @@ import {
   SkipForward,
   ThumbsDown,
   ThumbsUp,
+  Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
+import { hasBreathGuide, startBreathGuide, stopBreathGuide } from "../../lib/audio";
 import type { Exercise } from "../data/exercises";
 import { ExerciseFigure } from "./ExerciseFigure";
 import { Chip, MButton } from "./ui";
@@ -47,6 +50,7 @@ export function BreakPlayer({
   const [paused, setPaused] = useState(false);
   const [interrupted, setInterrupted] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [soundOn, setSoundOn] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<string, boolean>>({});
   const doneList = useRef<Exercise[]>([]);
   const doneCount = useRef(0);
@@ -109,6 +113,16 @@ export function BreakPlayer({
     if (!finished && phase === "run" && elapsed >= total) completeCurrent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elapsed]);
+
+  // Souffle sonore : suit l'état du lecteur (marche pendant l'exercice seulement).
+  useEffect(() => {
+    if (soundOn && phase === "run" && !paused && !finished && hasBreathGuide(exercise.id)) {
+      startBreathGuide(exercise.id);
+    } else {
+      stopBreathGuide();
+    }
+    return () => stopBreathGuide();
+  }, [soundOn, phase, paused, finished, exercise.id]);
 
   // Anti-triche douce : quitter la fenêtre suspend les exercices « écran ».
   useEffect(() => {
@@ -332,6 +346,16 @@ export function BreakPlayer({
                 >
                   {paused ? <Play className="h-4 w-4" aria-hidden /> : <Pause className="h-4 w-4" aria-hidden />}
                   {paused ? "Reprendre" : "Pause"}
+                </MButton>
+              )}
+              {hasBreathGuide(exercise.id) && (
+                <MButton
+                  variant={soundOn ? "primary" : "secondary"}
+                  onClick={() => setSoundOn((s) => !s)}
+                  aria-pressed={soundOn}
+                >
+                  {soundOn ? <Volume2 className="h-4 w-4" aria-hidden /> : <VolumeX className="h-4 w-4" aria-hidden />}
+                  Souffle sonore
                 </MButton>
               )}
               {queue.length > 1 && idx + 1 < queue.length && (

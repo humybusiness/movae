@@ -44,14 +44,13 @@ export default function LegalPage() {
 
           <Section title="Éditeur">
             <p>
-              Movaé est un projet édité par trois étudiants en kinésithérapie&nbsp;:
-              [À compléter&nbsp;: prénoms, noms — ou raison sociale et SIREN une fois la
-              société créée].
+              Movaé est un projet édité par Hugo Barthélemy, étudiant en kinésithérapie
+              [À compléter&nbsp;: ou raison sociale et SIREN une fois une société créée].
             </p>
             <p>
               Contact&nbsp;: <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold text-sauge-fonce">{CONTACT_EMAIL}</a>
             </p>
-            <p>Directeur de la publication&nbsp;: [À compléter].</p>
+            <p>Directeur de la publication&nbsp;: Hugo Barthélemy.</p>
           </Section>
 
           <Section title="Hébergement">

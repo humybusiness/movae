@@ -114,6 +114,39 @@ export function ProgressView({ now }: { now: number }) {
         </MCard>
       </div>
 
+      {/* Fresque de mouvement : 12 semaines d'un coup d'œil */}
+      <MCard className="mt-5 p-6">
+        <h3 className="font-display text-lg font-semibold">Votre fresque de mouvement</h3>
+        <p className="mt-1 text-xs text-[var(--m-ink2)]">
+          12 semaines · plus la case est verte, plus la journée a été active.
+        </p>
+        <div className="mt-4 flex gap-1 overflow-x-auto pb-1" role="img" aria-label="Activité des 12 dernières semaines">
+          {Array.from({ length: 12 }, (_, w) => (
+            <div key={w} className="flex flex-col gap-1">
+              {Array.from({ length: 7 }, (_, d) => {
+                const offset = (11 - w) * 7 + (6 - d);
+                const key = shiftDayKey(dayKey(now), -offset);
+                const dayData = state.days[key];
+                const breaks = dayData?.breaks ?? 0;
+                const intensity = Math.min(1, breaks / 6);
+                return (
+                  <div
+                    key={d}
+                    className="h-3.5 w-3.5 rounded-[4px]"
+                    style={{
+                      background:
+                        breaks > 0 ? "var(--m-accent)" : "var(--m-bg2)",
+                      opacity: breaks > 0 ? 0.25 + intensity * 0.75 : 1,
+                    }}
+                    title={`${key} : ${breaks} pause${breaks > 1 ? "s" : ""}`}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </MCard>
+
       {state.prefs.smartMode && (() => {
         const learned = learnedSummary(state);
         if (learned.observedHours.length === 0 && learned.triedCount === 0) return null;

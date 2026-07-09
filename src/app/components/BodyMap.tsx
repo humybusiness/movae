@@ -1,39 +1,139 @@
+import { useEffect, useRef, useState } from "react";
 import { ZONE_COLORS, ZONE_LABELS, ZONES, type Zone } from "../types";
 
-// Carte du corps Movaé — la signature visuelle de l'app.
-// Une silhouette assise dont chaque zone s'illumine de SA couleur, avec une
-// intensité proportionnelle à la sollicitation estimée. Lecture instantanée,
-// zéro texte nécessaire.
+// LE JUMEAU MOVAÉ — la signature de l'app.
+//
+// Un double vivant de votre corps : sa posture se dégrade en temps réel avec
+// vos tensions calculées par le moteur (la tête tombe avec la nuque, le dos
+// s'arrondit avec le dos, les épaules s'enroulent), il respire doucement, et
+// il se redresse visiblement quand vous validez une pause. Chaque zone
+// s'illumine de SA couleur. Lecture émotionnelle instantanée, zéro texte.
 
-const ANCHORS: Record<Zone, { x: number; y: number }> = {
-  yeux: { x: 66, y: 26 },
-  nuque: { x: 57, y: 38 },
-  epaules: { x: 54, y: 46 },
-  dos: { x: 48, y: 60 },
-  poignets: { x: 80, y: 60 },
-  hanches: { x: 54, y: 76 },
-  jambes: { x: 74, y: 92 },
-  energie: { x: 62, y: 58 },
-};
+const rad = (d: number) => (d * Math.PI) / 180;
 
-export function BodyMap({ strain }: { strain: Record<Zone, number> }) {
+interface TwinPose {
+  slump: number; // avachissement du buste (0..1)
+  droop: number; // chute de la tête (0..1)
+  roll: number; // enroulement des épaules (0..1)
+}
+
+function poseFrom(strain: Record<Zone, number>): TwinPose {
+  return {
+    slump: Math.min(1, (strain.dos * 0.7 + strain.hanches * 0.3) / 100),
+    droop: Math.min(1, strain.nuque / 100),
+    roll: Math.min(1, strain.epaules / 100),
+  };
+}
+
+export function BodyMap({
+  strain,
+  justMoved = false,
+}: {
+  strain: Record<Zone, number>;
+  justMoved?: boolean; // pause validée il y a peu : le jumeau rayonne
+}) {
   const sorted = [...ZONES].sort((a, b) => strain[b] - strain[a]);
+  const target = poseFrom(strain);
+
+  // Respiration + transition douce vers la posture cible.
+  const [t, setT] = useState(0);
+  const pose = useRef<TwinPose>({ ...target });
+  const reduced = useRef(
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  useEffect(() => {
+    if (reduced.current) {
+      pose.current = target;
+      return;
+    }
+    let raf = 0;
+    const t0 = performance.now();
+    let lastFrame = 0;
+    const loop = (now: number) => {
+      raf = requestAnimationFrame(loop);
+      // ~15 images/s suffisent pour une respiration — économe en CPU
+      if (now - lastFrame < 66) return;
+      lastFrame = now;
+      // approche progressive de la posture cible (le corps ne saute pas)
+      pose.current = {
+        slump: pose.current.slump + (target.slump - pose.current.slump) * 0.12,
+        droop: pose.current.droop + (target.droop - pose.current.droop) * 0.12,
+        roll: pose.current.roll + (target.roll - pose.current.roll) * 0.12,
+      };
+      setT((now - t0) / 1000);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target.slump, target.droop, target.roll]);
+
+  const p = reduced.current ? target : pose.current;
+  const breath = reduced.current ? 0 : Math.sin(t * 1.6) * 0.5 + 0.5; // cycle ~4 s
+
+  // ---- Cinématique du jumeau (vue de profil, assis) ----
+  const pelvis = { x: 50, y: 78 };
+  const torsoAngle = 3 + p.slump * 16 + breath * 1.2; // se tasse vers l'avant
+  const torsoLen = 29 - p.slump * 2.5;
+  const shoulder = {
+    x: pelvis.x + Math.sin(rad(torsoAngle)) * torsoLen + p.roll * 2.5,
+    y: pelvis.y - Math.cos(rad(torsoAngle)) * torsoLen + p.roll * 2,
+  };
+  const headAngle = torsoAngle + 4 + p.droop * 30;
+  const head = {
+    x: shoulder.x + Math.sin(rad(headAngle)) * 13.5,
+    y: shoulder.y - Math.cos(rad(headAngle)) * 13.5,
+  };
+  const elbow = { x: shoulder.x + 10, y: shoulder.y + 11 + p.roll * 2 };
+  const hand = { x: elbow.x + 10, y: elbow.y + 2 };
+  const knee = { x: pelvis.x + 23, y: pelvis.y - 2 };
+  const ankle = { x: knee.x + 1, y: knee.y + 26 };
+
+  const anchors: Record<Zone, { x: number; y: number }> = {
+    yeux: { x: head.x + 5, y: head.y - 1 },
+    nuque: { x: (shoulder.x + head.x) / 2, y: (shoulder.y + head.y) / 2 },
+    epaules: { x: shoulder.x - 2, y: shoulder.y + 2 },
+    dos: { x: pelvis.x + (shoulder.x - pelvis.x) * 0.4 - 5, y: pelvis.y + (shoulder.y - pelvis.y) * 0.5 },
+    poignets: { x: hand.x, y: hand.y },
+    hanches: { x: pelvis.x, y: pelvis.y },
+    jambes: { x: knee.x + 2, y: knee.y + 14 },
+    energie: { x: pelvis.x + (shoulder.x - pelvis.x) * 0.45 + 6, y: pelvis.y + (shoulder.y - pelvis.y) * 0.45 },
+  };
+
+  const L = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+    `M${a.x.toFixed(1)} ${a.y.toFixed(1)} L${b.x.toFixed(1)} ${b.y.toFixed(1)}`;
+
+  const globalNeed = Math.max(...ZONES.map((z) => strain[z]));
+  const auraColor = justMoved ? "var(--m-accent)" : globalNeed > 70 ? "#C9A86A" : "var(--m-accent)";
+
   return (
     <div className="flex items-center gap-5">
-      {/* Silhouette */}
-      <svg viewBox="0 0 120 120" className="w-40 shrink-0 sm:w-44" role="img" aria-label="Carte du corps : sollicitation estimée par zone">
+      {/* Le Jumeau */}
+      <svg
+        viewBox="0 0 120 120"
+        className="w-40 shrink-0 sm:w-44"
+        role="img"
+        aria-label="Votre jumeau : posture et tensions estimées en temps réel"
+      >
         <rect x={4} y={4} width={112} height={112} rx={24} fill="var(--m-bg2)" />
-        {/* halos de zone (sous la silhouette) */}
+        {/* aura respirante */}
+        <circle
+          cx={60}
+          cy={58}
+          r={40 + breath * 2.5 + (justMoved ? 4 : 0)}
+          fill={auraColor}
+          opacity={justMoved ? 0.2 : 0.07 + breath * 0.04}
+        />
+        {/* halos de zone */}
         {ZONES.map((z) => {
           const v = strain[z];
           return (
             <circle
               key={z}
-              cx={ANCHORS[z].x}
-              cy={ANCHORS[z].y}
-              r={8 + (v / 100) * 8}
+              cx={anchors[z].x}
+              cy={anchors[z].y}
+              r={7 + (v / 100) * 8}
               fill={ZONE_COLORS[z]}
-              opacity={0.16 + (v / 100) * 0.6}
+              opacity={0.14 + (v / 100) * 0.55}
             >
               <title>{`${ZONE_LABELS[z]} : ${Math.round(v)}/100`}</title>
             </circle>
@@ -41,21 +141,22 @@ export function BodyMap({ strain }: { strain: Record<Zone, number> }) {
         })}
         {/* chaise */}
         <g stroke="var(--m-ink2)" strokeWidth={3.5} strokeLinecap="round" opacity={0.35} fill="none">
-          <path d="M30 79 L66 79" />
-          <path d="M31 79 L31 48" />
-          <path d="M36 79 L36 104" />
-          <path d="M62 79 L62 104" />
+          <path d="M26 81 L62 81" />
+          <path d="M27 81 L27 50" />
+          <path d="M32 81 L32 106" />
+          <path d="M58 81 L58 106" />
         </g>
-        {/* silhouette assise */}
-        <g stroke="var(--m-ink)" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity={0.85}>
-          <path d="M54 76 L56 49" strokeWidth={8.5} />
-          <path d="M56 49 L58 44" strokeWidth={5} />
-          <circle cx={60} cy={32} r={8.5} fill="var(--m-ink)" stroke="none" />
-          <path d="M57 49 L68 59 L78 61" strokeWidth={5.5} />
-          <circle cx={78} cy={61} r={3} fill="var(--m-ink)" stroke="none" />
-          <path d="M54 76 L76 74" strokeWidth={7} />
-          <path d="M76 74 L76 100" strokeWidth={7} />
-          <path d="M76 100 L84 100" strokeWidth={5.5} />
+        {/* le jumeau */}
+        <g stroke="var(--m-ink)" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity={0.88}>
+          <path d={L(pelvis, shoulder)} strokeWidth={8.5} />
+          <path d={L(shoulder, { x: (shoulder.x + head.x) / 2, y: (shoulder.y + head.y) / 2 })} strokeWidth={5} />
+          <circle cx={head.x} cy={head.y} r={8.5} fill="var(--m-ink)" stroke="none" />
+          <path d={L(shoulder, elbow)} strokeWidth={5.5} />
+          <path d={L(elbow, hand)} strokeWidth={5.5} />
+          <circle cx={hand.x} cy={hand.y} r={3} fill="var(--m-ink)" stroke="none" />
+          <path d={L(pelvis, knee)} strokeWidth={7} />
+          <path d={L(knee, ankle)} strokeWidth={7} />
+          <path d={L(ankle, { x: ankle.x + 8, y: ankle.y })} strokeWidth={5.5} />
         </g>
       </svg>
 

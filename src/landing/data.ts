@@ -58,8 +58,8 @@ export const FEATURES: Feature[] = [
   },
   {
     icon: "TrendingUp",
-    title: "Progression visible",
-    text: "Semaines, séries et zones mobilisées : votre rythme devient concret.",
+    title: "Jumeau corporel",
+    text: "Votre double vivant se tasse quand vous vous tassez — et se redresse quand vous bougez.",
   },
   {
     icon: "Gift",

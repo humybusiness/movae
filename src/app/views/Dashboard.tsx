@@ -282,10 +282,16 @@ export function Dashboard({
       <div className="grid gap-5 lg:grid-cols-2">
         <MCard className="p-6">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-display text-lg font-semibold">Votre corps, en direct</h3>
+            <h3 className="font-display text-lg font-semibold">Votre jumeau</h3>
             <Chip tone={working ? "accent" : "neutral"}>{working ? "en direct" : "en veille"}</Chip>
           </div>
-          <BodyMap strain={state.strain} />
+          <BodyMap
+            strain={state.strain}
+            justMoved={state.session.lastBreakAt !== null && now - state.session.lastBreakAt < 2 * 60000}
+          />
+          <p className="mt-3 text-xs text-[var(--m-ink2)]">
+            Il se tasse quand vous vous tassez — et se redresse quand vous bougez.
+          </p>
         </MCard>
 
         <MCard className="p-6">

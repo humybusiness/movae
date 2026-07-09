@@ -31,7 +31,7 @@ import { ProgressView } from "./views/ProgressView";
 import { RewardsView } from "./views/RewardsView";
 import { SettingsView } from "./views/SettingsView";
 import { showNotification } from "../lib/notify";
-import { systemIdleSeconds } from "../lib/desktop";
+import { setTrayState, systemIdleSeconds } from "../lib/desktop";
 
 type ViewId = "accueil" | "exercices" | "programmes" | "progression" | "recompenses" | "reglages";
 
@@ -182,6 +182,24 @@ function AppInner() {
 
   // ---- Rappels doux ----
   const rec = useMemo(() => getRecommendation(state, now), [state, now]);
+
+  // ---- Icône vivante (bureau) : le logo du tray se tasse avec votre corps ----
+  const lastTray = useRef(-1);
+  useEffect(() => {
+    const level = !working
+      ? 0
+      : rec.level === "prioritaire"
+        ? 3
+        : rec.level === "recommandee"
+          ? 2
+          : rec.level === "bientot"
+            ? 1
+            : 0;
+    if (level !== lastTray.current) {
+      lastTray.current = level;
+      setTrayState(level);
+    }
+  }, [rec.level, working]);
   useEffect(() => {
     if (!working || !state.prefs.notifications || rec.snoozed || queue) return;
     if (rec.level !== "recommandee" && rec.level !== "prioritaire") return;

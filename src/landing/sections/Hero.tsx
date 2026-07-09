@@ -4,8 +4,8 @@ import { Container, Pill, PrimaryCta, Reveal, SecondaryCta } from "../shared";
 
 const PILLS = [
   "Créé par 3 étudiants kinés",
-  "100 exercices assis",
-  "Sans matériel",
+  "Jumeau corporel en direct",
+  "100 exercices illustrés",
   "Application Windows",
   "Gratuit au lancement",
 ];
