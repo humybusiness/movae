@@ -277,7 +277,7 @@ function AppInner() {
           <div className="space-y-3">
             <AccountBadge />
             <p className="px-1 text-[11px] leading-relaxed text-[var(--m-ink2)]">
-              Créé par des kinés.
+              Créé par des étudiants kinés.
             </p>
           </div>
         </aside>
@@ -372,6 +372,7 @@ function AppInner() {
             const ex = exerciseById(exercise.id) ?? exercise;
             dispatch({ type: "complete-break", exercise: ex, now: Date.now(), actualSec });
           }}
+          onAllComplete={() => dispatch({ type: "program-done" })}
           onFeedback={
             state.prefs.smartMode
               ? (exerciseId, up) => dispatch({ type: "exercise-feedback", exerciseId, up })

@@ -1,14 +1,17 @@
 import { useMemo, useState } from "react";
 import {
   ArrowUpRight,
+  Check,
   Clock,
   Eye,
   Flame,
   Gift,
+  Lightbulb,
   Play,
   RefreshCw,
   Sparkles,
   Sun,
+  Swords,
   Target,
 } from "lucide-react";
 import { useMovae } from "../state/store";
@@ -21,6 +24,10 @@ import {
 } from "../engine/engine";
 import { EYE_EXERCISE_ID, exerciseById, type Exercise } from "../data/exercises";
 import { REWARDS } from "../data/rewards";
+import { challengeOfDay, challengeDoneOn } from "../data/daily";
+import { levelFor } from "../data/levels";
+import { tipOfDay } from "../data/tips";
+import { dayKey } from "../../lib/time";
 import { ExerciseFigure } from "../components/ExerciseFigure";
 import { IndexVisual } from "../components/IndexVisual";
 import { Chip, MButton, MCard, ProgressBar } from "../components/ui";
@@ -68,6 +75,12 @@ export function Dashboard({
     (h) => new Date(h.ts).toDateString() === new Date(now).toDateString(),
   );
 
+  const todayKey = dayKey(now);
+  const challenge = challengeOfDay(todayKey);
+  const challengeDone = challengeDoneOn(state, todayKey);
+  const tip = tipOfDay(todayKey);
+  const lvl = levelFor(state.totals.breaks);
+
   return (
     <div className="space-y-5">
       {/* Bandeau yeux (règle 20-20-20) */}
@@ -107,6 +120,22 @@ export function Dashboard({
               "L’Indice reflète votre régularité du jour."
             )}
           </p>
+          {/* Niveau Movaé */}
+          <div className="mt-4 w-full border-t border-[var(--m-line)] pt-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-[var(--m-ink)]">
+                Niveau {lvl.level.n} · {lvl.level.name}
+              </span>
+              {lvl.next && (
+                <span className="text-[var(--m-ink2)]">
+                  {state.totals.breaks}/{lvl.next.threshold}
+                </span>
+              )}
+            </div>
+            {lvl.next && (
+              <ProgressBar className="mt-1.5" value={lvl.progress} max={1} />
+            )}
+          </div>
         </MCard>
 
         {/* Prochaine pause / démarrage */}
@@ -259,6 +288,48 @@ export function Dashboard({
               Tout est débloqué. Impressionnant.
             </p>
           )}
+        </MCard>
+      </div>
+
+      {/* Défi du jour + conseil kiné */}
+      <div className="grid gap-5 lg:grid-cols-2">
+        <MCard className="flex items-center gap-5 p-5">
+          <div className="shrink-0 rounded-2xl bg-[var(--m-bg2)]">
+            <ExerciseFigure motion={challenge.motion} size={96} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[var(--m-ink2)]">
+              <Swords className="h-3.5 w-3.5" aria-hidden />
+              Défi du jour
+            </p>
+            <h3 className="mt-1 truncate font-semibold">{challenge.name}</h3>
+            <p className="mt-0.5 text-xs text-[var(--m-ink2)]">
+              {challenge.reps} · un nouveau défi chaque jour, des badges à la clé.
+            </p>
+            {challengeDone ? (
+              <Chip tone="accent" className="mt-2.5">
+                <Check className="h-3.5 w-3.5" aria-hidden />
+                Relevé aujourd’hui
+              </Chip>
+            ) : (
+              <MButton
+                variant="secondary"
+                className="mt-2.5 !py-1.5"
+                onClick={() => onStartBreak([challenge])}
+              >
+                <Play className="h-4 w-4" aria-hidden />
+                Relever le défi
+              </MButton>
+            )}
+          </div>
+        </MCard>
+        <MCard className="p-5">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[var(--m-ink2)]">
+            <Lightbulb className="h-3.5 w-3.5" aria-hidden />
+            Le conseil kiné du jour
+          </p>
+          <h3 className="mt-2 font-semibold">{tip.title}</h3>
+          <p className="mt-1 text-sm leading-relaxed text-[var(--m-ink2)]">{tip.text}</p>
         </MCard>
       </div>
 

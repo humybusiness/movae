@@ -168,7 +168,7 @@ const L = (a: P, b: P) => `M${a.x.toFixed(1)} ${a.y.toFixed(1)} L${b.x.toFixed(1
 function SideBody({ pose, stand, ghost, target }: { pose: FullSide; stand: boolean; ghost?: boolean; target?: boolean }) {
   const j = solveSide(pose, stand);
   const stroke = "var(--m-strong)";
-  const op = ghost ? 0.26 : 1;
+  const op = ghost ? 0.3 : 1;
   const gazeTarget = { x: lerp(80, 106, pose.gaze), y: lerp(42, 20, pose.gaze) };
   return (
     <g opacity={op} strokeLinecap="round" strokeLinejoin="round" fill="none">
@@ -185,26 +185,31 @@ function SideBody({ pose, stand, ghost, target }: { pose: FullSide; stand: boole
         )}
       </g>
       {/* buste + respiration */}
-      <path d={L(j.pelvis, j.shoulder)} stroke={stroke} strokeWidth={7} />
+      <path d={L(j.pelvis, j.shoulder)} stroke={stroke} strokeWidth={8.5} />
       {pose.belly > 0.02 && (
         <circle cx={j.belly.x} cy={j.belly.y} r={3.5 + pose.belly * 4} stroke="var(--m-accent)" strokeWidth={2} opacity={0.75} />
       )}
       {/* jambe proche */}
       <g stroke={stroke}>
-        <path d={L(j.pelvis, j.kneeN)} strokeWidth={6} />
-        <path d={L(j.kneeN, j.ankleN)} strokeWidth={6} />
-        <path d={L(j.ankleN, j.toeN)} strokeWidth={5} />
+        <path d={L(j.pelvis, j.kneeN)} strokeWidth={7} />
+        <path d={L(j.kneeN, j.ankleN)} strokeWidth={7} />
+        <path d={L(j.ankleN, j.toeN)} strokeWidth={5.5} />
       </g>
       {/* bras proche */}
       {j.elbowN && j.handN && (
         <g stroke={stroke}>
-          <path d={L(j.shoulder, j.elbowN)} strokeWidth={5} />
-          <path d={L(j.elbowN, j.handN)} strokeWidth={5} />
-          <circle cx={j.handN.x} cy={j.handN.y} r={3} fill={stroke} stroke="none" />
+          <path d={L(j.shoulder, j.elbowN)} strokeWidth={5.5} />
+          <path d={L(j.elbowN, j.handN)} strokeWidth={5.5} />
+          <circle cx={j.handN.x} cy={j.handN.y} r={3.2} fill={stroke} stroke="none" />
         </g>
       )}
-      {/* tête */}
-      <circle cx={j.headC.x} cy={j.headC.y} r={HEAD_R} fill={stroke} stroke="none" />
+      {/* tête + nuque */}
+      <path
+        d={L(j.shoulder, { x: (j.shoulder.x + j.headC.x) / 2, y: (j.shoulder.y + j.headC.y) / 2 })}
+        stroke={stroke}
+        strokeWidth={5}
+      />
+      <circle cx={j.headC.x} cy={j.headC.y} r={HEAD_R + 0.5} fill={stroke} stroke="none" />
       {/* cible visuelle */}
       {target && !ghost && (
         <g>
@@ -592,28 +597,31 @@ export function ExerciseFigure({
       aria-hidden="true"
       fill="none"
     >
-      <circle cx={60} cy={60} r={47} fill="var(--m-soft)" opacity={0.5} />
+      {/* Cadre commun à toutes les illustrations : même DA partout */}
+      <rect x={6} y={6} width={108} height={108} rx={22} fill="var(--m-soft)" opacity={0.55} />
+      <ellipse cx={60} cy={107} rx={36} ry={4.5} fill="var(--m-ink)" opacity={0.07} />
       {/* halo de la zone travaillée */}
-      <circle cx={anchor.x} cy={anchor.y} r={13} fill="var(--m-accent)" opacity={0.16} />
-      <circle cx={anchor.x} cy={anchor.y} r={6} fill="var(--m-accent)" opacity={0.2} />
+      <circle cx={anchor.x} cy={anchor.y} r={14} fill="var(--m-accent)" opacity={0.18} />
+      <circle cx={anchor.x} cy={anchor.y} r={6.5} fill="var(--m-accent)" opacity={0.22} />
       {body}
-      {/* flèches de mouvement */}
+      {/* flèches de mouvement : pleines en statique, animées dans le lecteur */}
       {motion.arrows?.map((d, i) => (
         <path
           key={i}
           d={d}
           stroke="var(--m-accent)"
-          strokeWidth={2.4}
+          strokeWidth={3}
           strokeLinecap="round"
           fill="none"
-          strokeDasharray="5 4"
+          opacity={0.95}
+          strokeDasharray={running ? "6 5" : undefined}
           markerEnd="url(#m-arrowhead)"
-          style={running ? { animation: "m-arrow-dash 1.2s linear infinite" } : undefined}
+          style={running ? { animation: "m-arrow-dash 1.1s linear infinite" } : undefined}
         />
       ))}
       <defs>
-        <marker id="m-arrowhead" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
-          <path d="M0 0 L7 3.5 L0 7 Z" fill="var(--m-accent)" />
+        <marker id="m-arrowhead" markerWidth="8" markerHeight="8" refX="5.5" refY="4" orient="auto">
+          <path d="M0 0.5 L8 4 L0 7.5 Z" fill="var(--m-accent)" />
         </marker>
       </defs>
     </svg>

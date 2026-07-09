@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => ({
         name: "Movaé — Pauses actives au bureau",
         short_name: "Movaé",
         description:
-          "Micro-pauses actives, exercices assis et Indice de progression pour les journées devant l’écran. Créé par des kinésithérapeutes.",
+          "Micro-pauses actives, exercices assis et Indice de progression pour les journées devant l’écran. Créé par des étudiants en kinésithérapie.",
         lang: "fr",
         start_url: "/app",
         scope: "/",

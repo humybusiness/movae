@@ -12,6 +12,7 @@ import type { Exercise } from "../data/exercises";
 import {
   applyBreak,
   applyExerciseFeedback,
+  applyProgramDone,
   applyTick,
   emptyInsights,
   emptyStrain,
@@ -55,7 +56,7 @@ export function defaultState(): MovaeState {
     days: {},
     streak: { current: 0, best: 0, lastDay: null },
     unlocked: [],
-    totals: { breaks: 0, minutes: 0 },
+    totals: { breaks: 0, minutes: 0, programs: 0 },
   };
 }
 
@@ -132,6 +133,7 @@ export type Action =
   | { type: "snooze"; until: number }
   | { type: "notified"; now: number }
   | { type: "exercise-feedback"; exerciseId: string; up: boolean }
+  | { type: "program-done" }
   | { type: "clear-insights" }
   | { type: "hydrate"; state: MovaeState }
   | { type: "reset" };
@@ -201,6 +203,8 @@ function reducer(state: MovaeState, action: Action): MovaeState {
       return { ...state, session: { ...state.session, lastNotifyAt: action.now } };
     case "exercise-feedback":
       return applyExerciseFeedback(state, action.exerciseId, action.up);
+    case "program-done":
+      return applyProgramDone(state);
     case "clear-insights":
       return { ...state, insights: emptyInsights() };
     case "hydrate":

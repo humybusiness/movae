@@ -41,7 +41,7 @@ export const WORK_STYLE_LABELS: Record<WorkStyle, string> = {
   lecture: "Lecture & analyse",
 };
 
-export type ThemeId = "sauge" | "nuit-calme" | "sable" | "foret" | "aube";
+export type ThemeId = "sauge" | "nuit-calme" | "sable" | "foret" | "aube" | "ocean";
 export type IndexStyleId = "anneau" | "score" | "barres";
 export type SessionStatus = "off" | "working" | "away";
 
@@ -114,7 +114,7 @@ export interface MovaeState {
   days: Record<string, DayStats>;
   streak: { current: number; best: number; lastDay: string | null };
   unlocked: string[];
-  totals: { breaks: number; minutes: number };
+  totals: { breaks: number; minutes: number; programs: number };
 }
 
 export type UrgencyLevel = "fraiche" | "ok" | "bientot" | "recommandee" | "prioritaire";

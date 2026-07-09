@@ -3,7 +3,7 @@ import { BrowserMockup } from "../BrowserMockup";
 import { Container, Pill, PrimaryCta, Reveal, SecondaryCta } from "../shared";
 
 const PILLS = [
-  "Créé par 3 kinés",
+  "Créé par 3 étudiants kinés",
   "100 exercices assis",
   "Sans matériel",
   "Application Windows",
@@ -25,7 +25,7 @@ export function Hero() {
       <Container className="relative grid items-center gap-14 lg:grid-cols-[1.05fr_1fr]">
         <Reveal>
           <h1 className="font-display text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl xl:text-[3.4rem]">
-            La pause active créée par des kinés pour vos journées devant l’écran.
+            La pause active créée par de futurs kinés pour vos journées devant l’écran.
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-encre-2">
             Movaé aide les télétravailleurs à bouger régulièrement grâce à des exercices

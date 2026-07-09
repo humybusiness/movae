@@ -1,3 +1,5 @@
+import { countChallengesDone, distinctExercisesTried } from "./daily";
+import { shiftDayKey, dayKey } from "../../lib/time";
 import type { IndexStyleId, MovaeState, ThemeId } from "../types";
 
 export interface RewardProgress {
@@ -22,6 +24,20 @@ const anyDay = (s: MovaeState, pred: (d: MovaeState["days"][string]) => boolean)
 
 const eyeBreaks = (s: MovaeState) =>
   s.history.filter((h) => h.zones.includes("yeux")).length;
+
+const feedbackCount = (s: MovaeState) =>
+  Object.values(s.insights.exFeedback).reduce((sum, f) => sum + f.up + f.down, 0);
+
+// Jours actifs (≥ 3 pauses) sur les 7 derniers jours.
+const activeDaysThisWeek = (s: MovaeState) => {
+  const today = dayKey(Date.now());
+  let n = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = s.days[shiftDayKey(today, -i)];
+    if (d && d.breaks >= 3) n++;
+  }
+  return n;
+};
 
 export const REWARDS: Reward[] = [
   // ---------- Badges ----------
@@ -146,6 +162,170 @@ export const REWARDS: Reward[] = [
     check: (s) => eyeBreaks(s) >= 10,
     progress: (s) => ({ current: eyeBreaks(s), target: 10 }),
   },
+  // ---------- Niveaux ----------
+  {
+    id: "niveau-eveil",
+    kind: "badge",
+    name: "Niveau 2 — Éveil",
+    desc: "10 pauses : le mouvement s'installe.",
+    hint: "10 pauses au total",
+    icon: "Sunrise",
+    check: (s) => s.totals.breaks >= 10,
+    progress: (s) => ({ current: s.totals.breaks, target: 10 }),
+  },
+  {
+    id: "niveau-elan",
+    kind: "badge",
+    name: "Niveau 3 — Élan",
+    desc: "30 pauses : la routine prend forme.",
+    hint: "30 pauses au total",
+    icon: "Zap",
+    check: (s) => s.totals.breaks >= 30,
+    progress: (s) => ({ current: s.totals.breaks, target: 30 }),
+  },
+  {
+    id: "niveau-rythme",
+    kind: "badge",
+    name: "Niveau 4 — Rythme",
+    desc: "75 pauses : votre corps connaît la musique.",
+    hint: "75 pauses au total",
+    icon: "Music",
+    check: (s) => s.totals.breaks >= 75,
+    progress: (s) => ({ current: s.totals.breaks, target: 75 }),
+  },
+  {
+    id: "niveau-flow",
+    kind: "badge",
+    name: "Niveau 5 — Flow",
+    desc: "150 pauses : bouger fait partie de vous.",
+    hint: "150 pauses au total",
+    icon: "Waves",
+    check: (s) => s.totals.breaks >= 150,
+    progress: (s) => ({ current: s.totals.breaks, target: 150 }),
+  },
+  {
+    id: "niveau-maitre",
+    kind: "badge",
+    name: "Niveau 6 — Maître du mouvement",
+    desc: "300 pauses : le sommet de la pyramide Movaé.",
+    hint: "300 pauses au total",
+    icon: "Mountain",
+    check: (s) => s.totals.breaks >= 300,
+    progress: (s) => ({ current: s.totals.breaks, target: 300 }),
+  },
+  // ---------- Exploration ----------
+  {
+    id: "explorateur-10",
+    kind: "badge",
+    name: "Curieux",
+    desc: "10 exercices différents essayés.",
+    hint: "10 exercices différents",
+    icon: "Compass",
+    check: (s) => distinctExercisesTried(s) >= 10,
+    progress: (s) => ({ current: distinctExercisesTried(s), target: 10 }),
+  },
+  {
+    id: "explorateur-30",
+    kind: "badge",
+    name: "Explorateur",
+    desc: "30 exercices différents essayés.",
+    hint: "30 exercices différents",
+    icon: "Map",
+    check: (s) => distinctExercisesTried(s) >= 30,
+    progress: (s) => ({ current: distinctExercisesTried(s), target: 30 }),
+  },
+  {
+    id: "explorateur-60",
+    kind: "badge",
+    name: "Grand voyageur",
+    desc: "60 exercices différents essayés.",
+    hint: "60 exercices différents",
+    icon: "Globe",
+    check: (s) => distinctExercisesTried(s) >= 60,
+    progress: (s) => ({ current: distinctExercisesTried(s), target: 60 }),
+  },
+  {
+    id: "collection-complete",
+    kind: "badge",
+    name: "Collection complète",
+    desc: "Les 100 exercices essayés au moins une fois. Respect.",
+    hint: "100 exercices différents",
+    icon: "Library",
+    check: (s) => distinctExercisesTried(s) >= 100,
+    progress: (s) => ({ current: distinctExercisesTried(s), target: 100 }),
+  },
+  // ---------- Défis du jour ----------
+  {
+    id: "defi-premier",
+    kind: "badge",
+    name: "Défi relevé",
+    desc: "Votre premier défi du jour accompli.",
+    hint: "1 défi du jour",
+    icon: "Target",
+    check: (s) => countChallengesDone(s) >= 1,
+    progress: (s) => ({ current: countChallengesDone(s), target: 1 }),
+  },
+  {
+    id: "defi-7",
+    kind: "badge",
+    name: "Chasseur de défis",
+    desc: "7 défis du jour relevés.",
+    hint: "7 défis du jour",
+    icon: "Swords",
+    check: (s) => countChallengesDone(s) >= 7,
+    progress: (s) => ({ current: countChallengesDone(s), target: 7 }),
+  },
+  {
+    id: "defi-21",
+    kind: "badge",
+    name: "Imbattable",
+    desc: "21 défis du jour relevés.",
+    hint: "21 défis du jour",
+    icon: "Trophy",
+    check: (s) => countChallengesDone(s) >= 21,
+    progress: (s) => ({ current: countChallengesDone(s), target: 21 }),
+  },
+  // ---------- Programmes & engagement ----------
+  {
+    id: "programme-premier",
+    kind: "badge",
+    name: "Rituel complet",
+    desc: "Un programme guidé terminé de bout en bout.",
+    hint: "1 programme terminé",
+    icon: "ListChecks",
+    check: (s) => s.totals.programs >= 1,
+    progress: (s) => ({ current: s.totals.programs, target: 1 }),
+  },
+  {
+    id: "programmes-10",
+    kind: "badge",
+    name: "Maître des rituels",
+    desc: "10 programmes guidés terminés.",
+    hint: "10 programmes terminés",
+    icon: "Layers",
+    check: (s) => s.totals.programs >= 10,
+    progress: (s) => ({ current: s.totals.programs, target: 10 }),
+  },
+  {
+    id: "semaine-parfaite",
+    kind: "badge",
+    name: "Semaine solide",
+    desc: "5 jours actifs (≥ 3 pauses) sur les 7 derniers jours.",
+    hint: "5 jours actifs / 7",
+    icon: "CalendarHeart",
+    check: (s) => activeDaysThisWeek(s) >= 5,
+    progress: (s) => ({ current: activeDaysThisWeek(s), target: 5 }),
+  },
+  {
+    id: "critique-10",
+    kind: "badge",
+    name: "Fin connaisseur",
+    desc: "10 retours 👍/👎 donnés : le moteur vous connaît mieux.",
+    hint: "10 retours donnés",
+    icon: "MessageSquareHeart",
+    check: (s) => feedbackCount(s) >= 10,
+    progress: (s) => ({ current: feedbackCount(s), target: 10 }),
+  },
   // ---------- Thèmes ----------
   {
     id: "theme-nuit",
@@ -190,6 +370,17 @@ export const REWARDS: Reward[] = [
     grants: { theme: "aube" },
     check: (s) => s.totals.breaks >= 75,
     progress: (s) => ({ current: s.totals.breaks, target: 75 }),
+  },
+  {
+    id: "theme-ocean",
+    kind: "theme",
+    name: "Thème Océan",
+    desc: "Le bleu-vert profond des grands réguliers.",
+    hint: "120 pauses au total",
+    icon: "Waves",
+    grants: { theme: "ocean" },
+    check: (s) => s.totals.breaks >= 120,
+    progress: (s) => ({ current: s.totals.breaks, target: 120 }),
   },
   // ---------- Styles d'indice ----------
   {

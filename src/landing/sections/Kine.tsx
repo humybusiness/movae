@@ -52,11 +52,12 @@ export function Kine() {
             L’approche terrain
           </p>
           <h2 className="font-display mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Créé par 3 kinésithérapeutes.
+            Créé par 3 étudiants en kinésithérapie.
           </h2>
           <p className="mt-4 text-lg text-encre-2">
-            Movaé est pensé avec une approche terrain : des exercices simples, assis,
-            courts, sans matériel et adaptés aux vraies journées de travail devant écran.
+            Movaé est né sur les bancs de l’école de kiné, avec une approche terrain :
+            des exercices simples, assis, courts, sans matériel et adaptés aux vraies
+            journées de travail devant écran.
           </p>
         </Reveal>
 

@@ -12,7 +12,7 @@ export function Footer() {
               <span className="font-display text-lg font-semibold">Movaé</span>
             </div>
             <p className="mt-3 max-w-xs text-sm text-encre-2">
-              La pause active créée par des kinés pour les journées devant l’écran.
+              La pause active créée par de futurs kinés pour les journées devant l’écran.
             </p>
           </div>
           <nav className="flex flex-wrap gap-x-8 gap-y-3 text-sm" aria-label="Liens de pied de page">

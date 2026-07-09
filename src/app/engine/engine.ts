@@ -383,6 +383,7 @@ export function applyBreak(
     streak,
     insights,
     totals: {
+      ...state.totals,
       breaks: state.totals.breaks + 1,
       minutes: state.totals.minutes + Math.round(actualSec / 60),
     },
@@ -394,12 +395,26 @@ export function applyBreak(
     },
   };
 
-  const newlyUnlocked = REWARDS.filter(
-    (r) => !next.unlocked.includes(r.id) && r.check(next),
-  ).map((r) => r.id);
-  if (newlyUnlocked.length > 0) next.unlocked = [...next.unlocked, ...newlyUnlocked];
-
+  next.unlocked = withNewUnlocks(next);
   next.days[key] = { ...day, index: computeIndex(next, key) };
+  return next;
+}
+
+// Vérifie toutes les récompenses et renvoie la liste enrichie des débloquées.
+function withNewUnlocks(state: MovaeState): string[] {
+  const fresh = REWARDS.filter(
+    (r) => !state.unlocked.includes(r.id) && r.check(state),
+  ).map((r) => r.id);
+  return fresh.length > 0 ? [...state.unlocked, ...fresh] : state.unlocked;
+}
+
+// Programme guidé terminé de bout en bout.
+export function applyProgramDone(state: MovaeState): MovaeState {
+  const next: MovaeState = {
+    ...state,
+    totals: { ...state.totals, programs: state.totals.programs + 1 },
+  };
+  next.unlocked = withNewUnlocks(next);
   return next;
 }
 
