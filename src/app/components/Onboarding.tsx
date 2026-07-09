@@ -21,7 +21,9 @@ const STYLE_DESC: Record<WorkStyle, string> = {
 
 export function Onboarding({
   onDone,
+  initialName = "",
 }: {
+  initialName?: string;
   onDone: (data: {
     name: string;
     style: WorkStyle;
@@ -31,7 +33,7 @@ export function Onboarding({
   }) => void;
 }) {
   const [step, setStep] = useState(0);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName);
   const [style, setStyle] = useState<WorkStyle>("mixte");
   const [cadenceMin, setCadenceMin] = useState(45);
   const [goal, setGoal] = useState(6);
@@ -63,8 +65,8 @@ export function Onboarding({
             </h1>
             <p className="mt-3 text-[var(--m-ink2)]">
               Des micro-pauses actives, assises et guidées, recommandées au bon moment de
-              votre journée de travail. Tout reste dans votre navigateur : pas de compte,
-              pas de caméra.
+              votre journée de travail. Uniquement des statistiques de mouvement, jamais de
+              caméra.
             </p>
             <label className="mt-6 block text-sm font-semibold" htmlFor="ob-name">
               Comment doit-on vous appeler ? <span className="font-normal text-[var(--m-ink2)]">(optionnel)</span>

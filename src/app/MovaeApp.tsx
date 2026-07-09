@@ -6,12 +6,17 @@ import {
   Dumbbell,
   Home,
   LayoutList,
+  Loader2,
+  LogIn,
   LogOut,
   Play,
+  Power,
   Settings,
   TrendingUp,
 } from "lucide-react";
 import { StoreProvider, useMovae } from "./state/store";
+import { AuthProvider, useAuth } from "./auth/AuthProvider";
+import { Login } from "./auth/Login";
 import { getRecommendation } from "./engine/engine";
 import { exerciseById, type Exercise } from "./data/exercises";
 import { rewardById } from "./data/rewards";
@@ -67,8 +72,61 @@ function greeting(name: string, now: number): string {
   return `Bonsoir${who}`;
 }
 
+function AccountBadge({ compact = false }: { compact?: boolean }) {
+  const { authEnabled, user, logout } = useAuth();
+  if (!authEnabled) return null;
+
+  if (!user) {
+    // Mode invité alors que les comptes sont activés : proposer la connexion.
+    return (
+      <Link
+        to="/app"
+        onClick={() => {
+          try {
+            sessionStorage.removeItem("movae:guest");
+          } catch {
+            /* ignore */
+          }
+          window.location.reload();
+        }}
+        className="flex items-center gap-2 rounded-xl border border-[var(--m-line)] px-3 py-2 text-xs font-semibold text-[var(--m-ink2)] transition hover:bg-[var(--m-bg2)] hover:text-[var(--m-ink)]"
+      >
+        <LogIn className="h-4 w-4" aria-hidden />
+        Se connecter / créer un compte
+      </Link>
+    );
+  }
+
+  return (
+    <div className={`flex items-center gap-2.5 ${compact ? "" : "rounded-xl border border-[var(--m-line)] p-2.5"}`}>
+      {user.photoURL ? (
+        <img src={user.photoURL} alt="" className="h-8 w-8 shrink-0 rounded-full" />
+      ) : (
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--m-soft)] text-xs font-bold text-[var(--m-strong)]">
+          {user.name.slice(0, 1).toUpperCase()}
+        </span>
+      )}
+      {!compact && (
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-semibold text-[var(--m-ink)]">{user.name}</p>
+          <p className="truncate text-[11px] text-[var(--m-ink2)]">{user.email}</p>
+        </div>
+      )}
+      <button
+        onClick={() => logout()}
+        aria-label="Se déconnecter"
+        title="Se déconnecter"
+        className="rounded-lg p-1.5 text-[var(--m-ink2)] transition hover:bg-[var(--m-bg2)] hover:text-[var(--m-ink)]"
+      >
+        <Power className="h-4 w-4" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
 function AppInner() {
   const { state, dispatch } = useMovae();
+  const { user } = useAuth();
   const [view, setView] = useState<ViewId>("accueil");
   const [queue, setQueue] = useState<Exercise[] | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -79,6 +137,7 @@ function AppInner() {
   const theme = themeById(state.prefs.theme);
   const working = state.session.status === "working";
   const away = state.session.status === "away";
+  const displayName = state.profile.name || user?.name || "";
 
   // ---- Suivi d'activité (souris / clavier, local uniquement) ----
   useEffect(() => {
@@ -172,6 +231,7 @@ function AppInner() {
     return (
       <div className="m-app min-h-screen" style={theme.vars as CSSProperties}>
         <Onboarding
+          initialName={user?.name ?? ""}
           onDone={(data) => {
             dispatch({ type: "onboard", ...data });
             dispatch({ type: "start-day", now: Date.now() });
@@ -207,11 +267,12 @@ function AppInner() {
               </button>
             ))}
           </nav>
-          <p className="text-xs leading-relaxed text-[var(--m-ink2)]">
-            Créé par des kinés.
-            <br />
-            Vos données restent ici.
-          </p>
+          <div className="space-y-3">
+            <AccountBadge />
+            <p className="px-1 text-[11px] leading-relaxed text-[var(--m-ink2)]">
+              Créé par des kinés.
+            </p>
+          </div>
         </aside>
 
         {/* Colonne principale */}
@@ -223,9 +284,12 @@ function AppInner() {
                 <span className="font-display text-lg font-semibold">Movaé</span>
               </div>
               <p className="hidden text-sm font-semibold lg:block">
-                {greeting(state.profile.name, now)}
+                {greeting(displayName, now)}
               </p>
               <div className="flex items-center gap-2">
+                <span className="lg:hidden">
+                  <AccountBadge compact />
+                </span>
                 {working && (
                   <span className="mr-1 hidden items-center gap-1.5 text-xs font-semibold text-[var(--m-strong)] sm:flex">
                     <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--m-accent)]" aria-hidden />
@@ -321,10 +385,33 @@ function AppInner() {
   );
 }
 
-export default function MovaeApp() {
+function AuthGate() {
+  const { ready, authEnabled, user, guest } = useAuth();
+
+  if (!ready) {
+    return (
+      <div className="m-app flex min-h-screen items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--m-strong)]" aria-hidden />
+      </div>
+    );
+  }
+
+  if (authEnabled && !user && !guest) {
+    return <Login />;
+  }
+
+  // La clé force la réinitialisation du store au changement d'utilisateur.
   return (
-    <StoreProvider>
+    <StoreProvider key={user?.uid ?? "guest"}>
       <AppInner />
     </StoreProvider>
+  );
+}
+
+export default function MovaeApp() {
+  return (
+    <AuthProvider>
+      <AuthGate />
+    </AuthProvider>
   );
 }

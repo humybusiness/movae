@@ -44,7 +44,7 @@ export function Hero() {
             </SecondaryCta>
           </div>
           <p className="mt-4 text-sm text-encre-2">
-            Installation en navigateur. Aucun compte requis en V1.
+            Installation en navigateur. Compte Google optionnel pour synchroniser vos appareils.
           </p>
         </Reveal>
         <Reveal delay={150}>

@@ -189,8 +189,9 @@ export function SettingsView() {
       <MCard className="mt-5 p-6">
         <h3 className="font-display text-lg font-semibold">Vos données</h3>
         <p className="mt-1 text-sm text-[var(--m-ink2)]">
-          Tout est stocké localement dans ce navigateur. Aucun compte, aucun serveur,
-          aucune donnée médicale.
+          Sans compte, tout est stocké dans ce navigateur. Avec un compte, votre
+          progression est synchronisée de façon sécurisée pour vous suivre d’un appareil à
+          l’autre. Dans tous les cas : aucune donnée médicale.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <MButton variant="secondary" onClick={() => exportStateAsJson(state)}>

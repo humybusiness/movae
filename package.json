@@ -12,6 +12,7 @@
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.2.0",
     "@fontsource-variable/manrope": "^5.2.0",
+    "firebase": "^11.10.0",
     "lucide-react": "^0.525.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

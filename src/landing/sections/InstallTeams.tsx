@@ -31,11 +31,11 @@ const TEAM_CARDS = [
 ];
 
 const TRUST_POINTS = [
-  { icon: Camera, label: "Aucune caméra" },
-  { icon: UserX, label: "Aucun compte requis en V1" },
-  { icon: ShieldCheck, label: "Aucune donnée médicale partagée" },
-  { icon: RotateCcw, label: "Remise à zéro possible" },
-  { icon: Lock, label: "Export local de vos données" },
+  { icon: Camera, label: "Aucune caméra, aucun suivi du clavier" },
+  { icon: UserX, label: "Compte optionnel — utilisable 100 % en local" },
+  { icon: ShieldCheck, label: "Aucune donnée médicale, jamais" },
+  { icon: RotateCcw, label: "Remise à zéro possible à tout moment" },
+  { icon: Lock, label: "Export de vos données quand vous voulez" },
 ];
 
 export function InstallTeams() {
@@ -109,9 +109,10 @@ export function InstallTeams() {
                 Pas de surveillance. Pas de données médicales.
               </h2>
               <p className="mt-4 leading-relaxed text-encre-2">
-                En V1, Movaé fonctionne localement dans votre navigateur. Vos données
-                servent uniquement à afficher votre progression et à personnaliser votre
-                expérience. Elles ne quittent jamais votre machine.
+                Sans compte, Movaé fonctionne entièrement dans votre navigateur. Avec un
+                compte, votre progression est synchronisée de façon sécurisée pour vous
+                suivre d’un appareil à l’autre — uniquement des statistiques de pauses,
+                jamais de données médicales, jamais de caméra.
               </p>
             </Reveal>
             <Reveal delay={120}>

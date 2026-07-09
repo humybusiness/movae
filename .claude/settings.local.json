@@ -3,7 +3,15 @@
     "allow": [
       "PowerShell(npm install)",
       "PowerShell(node scripts/generate-icons.mjs)",
-      "PowerShell(npm run build)"
+      "PowerShell(npm run build)",
+      "Bash(git --version)",
+      "Bash(timeout 15 git ls-remote origin main)",
+      "Bash(git remote *)",
+      "Bash(git fetch *)",
+      "Bash(npm run *)",
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }

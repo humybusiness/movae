@@ -67,7 +67,7 @@ export function FaqEnd() {
               </PrimaryCta>
             </div>
             <p className="mt-4 text-sm text-nuit-texte/60">
-              Créé par 3 kinés. Exercices assis. Aucun compte requis en V1.
+              Créé par 3 kinés. Exercices assis. Compte optionnel.
             </p>
           </Reveal>
         </Container>

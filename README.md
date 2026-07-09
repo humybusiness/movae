@@ -66,6 +66,47 @@ src/
 Tout est heuristique, local et transparent — aucun capteur, aucune caméra,
 aucune prétention médicale.
 
+## Comptes & connexion Google (optionnel)
+
+Movaé fonctionne **sans compte** par défaut (données locales). Pour activer la
+**connexion Google / e-mail** et la **synchronisation cloud** (progression qui suit
+l’utilisateur d’un appareil à l’autre), il faut un projet **Firebase** gratuit —
+c’est la seule étape que le code ne peut pas faire à votre place, car elle est liée
+à votre compte Google.
+
+### Mise en place (~5 min)
+
+1. **Créer le projet** : https://console.firebase.google.com → *Ajouter un projet*.
+2. **Activer l’authentification** : menu *Authentication* → *Get started* →
+   onglet *Sign-in method* → activez **Google** et (optionnel) **E-mail/Mot de passe**.
+3. **Créer la base** : menu *Firestore Database* → *Create database* → mode
+   *production* → région Europe (`eur3`). Puis onglet *Rules*, collez :
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /movae/{uid} {
+         allow read, write: if request.auth != null && request.auth.uid == uid;
+       }
+     }
+   }
+   ```
+4. **Récupérer la config** : ⚙️ *Paramètres du projet* → *Vos applications* →
+   icône Web `</>` → enregistrez l’app → copiez les valeurs `firebaseConfig`.
+5. **Renseigner les variables** :
+   - En local : copiez `.env.example` en `.env` et remplissez les `VITE_FIREBASE_*`.
+   - Sur **Vercel** : *Settings → Environment Variables* → ajoutez les 6 variables
+     (`VITE_FIREBASE_API_KEY`, `…AUTH_DOMAIN`, `…PROJECT_ID`, `…STORAGE_BUCKET`,
+     `…MESSAGING_SENDER_ID`, `…APP_ID`) → *Redeploy*.
+6. **Autoriser le domaine** : Firebase → *Authentication* → *Settings* →
+   *Authorized domains* → ajoutez votre domaine Vercel (`movae-xxxx.vercel.app`
+   et votre domaine final s’il existe). Sans ça, le popup Google renvoie
+   `auth/unauthorized-domain`.
+
+Tant que ces variables ne sont pas définies, l’écran de connexion n’apparaît pas :
+l’app reste en mode local. Une fois définies, la connexion s’active toute seule,
+avec un bouton **« Continuer sans compte »** pour rester en local.
+
 ## Modifier l’URL de l’app / les contenus
 
 - **URL de l’app** : `src/lib/constants.ts` → `APP_URL` (par défaut `/app`).

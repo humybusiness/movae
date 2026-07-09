@@ -3,15 +3,24 @@ import {
   useContext,
   useEffect,
   useReducer,
+  useRef,
   type Dispatch,
   type ReactNode,
 } from "react";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import type { Exercise } from "../data/exercises";
 import { applyBreak, applyTick, emptyStrain } from "../engine/engine";
+import { useAuth } from "../auth/AuthProvider";
+import { db } from "../../lib/firebase";
 import { dayKey } from "../../lib/time";
 import type { IndexStyleId, MovaeState, ThemeId, WorkStyle } from "../types";
 
 const STORAGE_KEY = "movae:v1";
+
+// Clé de stockage local : partagée pour l'invité, préfixée par uid si connecté.
+function keyFor(uid: string | null): string {
+  return uid ? `${STORAGE_KEY}:${uid}` : STORAGE_KEY;
+}
 
 export function defaultState(): MovaeState {
   return {
@@ -37,34 +46,49 @@ export function defaultState(): MovaeState {
   };
 }
 
-function load(): MovaeState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultState();
-    const parsed = JSON.parse(raw) as Partial<MovaeState>;
-    const base = defaultState();
-    const state: MovaeState = {
-      ...base,
-      ...parsed,
-      profile: { ...base.profile, ...parsed.profile },
-      prefs: { ...base.prefs, ...parsed.prefs },
-      session: { ...base.session, ...parsed.session },
-      strain: { ...base.strain, ...parsed.strain },
-      streak: { ...base.streak, ...parsed.streak },
-      totals: { ...base.totals, ...parsed.totals },
-    };
-    // Si la série a été rompue (dernier jour actif avant hier), remettre à zéro.
-    if (state.streak.lastDay) {
-      const today = dayKey(Date.now());
-      const yesterday = dayKey(Date.now() - 86400000);
-      if (state.streak.lastDay !== today && state.streak.lastDay !== yesterday) {
-        state.streak = { ...state.streak, current: 0 };
-      }
+// Fusionne un état partiel (localStorage ou cloud) avec l'état par défaut.
+function hydrateState(parsed: Partial<MovaeState>): MovaeState {
+  const base = defaultState();
+  const state: MovaeState = {
+    ...base,
+    ...parsed,
+    profile: { ...base.profile, ...parsed.profile },
+    prefs: { ...base.prefs, ...parsed.prefs },
+    session: { ...base.session, ...parsed.session },
+    strain: { ...base.strain, ...parsed.strain },
+    streak: { ...base.streak, ...parsed.streak },
+    totals: { ...base.totals, ...parsed.totals },
+  };
+  // Si la série a été rompue (dernier jour actif avant hier), remettre à zéro.
+  if (state.streak.lastDay) {
+    const today = dayKey(Date.now());
+    const yesterday = dayKey(Date.now() - 86400000);
+    if (state.streak.lastDay !== today && state.streak.lastDay !== yesterday) {
+      state.streak = { ...state.streak, current: 0 };
     }
-    return state;
-  } catch {
-    return defaultState();
   }
+  return state;
+}
+
+function readRaw(key: string): Partial<MovaeState> | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as Partial<MovaeState>) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Chargement initial : données de l'utilisateur, sinon migration des données
+// invité au premier login, sinon état par défaut.
+function loadInitial(uid: string | null): MovaeState {
+  const own = readRaw(keyFor(uid));
+  if (own) return hydrateState(own);
+  if (uid) {
+    const guest = readRaw(STORAGE_KEY);
+    if (guest) return hydrateState(guest);
+  }
+  return defaultState();
 }
 
 export type Action =
@@ -87,6 +111,7 @@ export type Action =
   | { type: "complete-break"; exercise: Exercise; now: number; actualSec: number }
   | { type: "snooze"; until: number }
   | { type: "notified"; now: number }
+  | { type: "hydrate"; state: MovaeState }
   | { type: "reset" };
 
 function reducer(state: MovaeState, action: Action): MovaeState {
@@ -148,6 +173,8 @@ function reducer(state: MovaeState, action: Action): MovaeState {
       return { ...state, session: { ...state.session, snoozedUntil: action.until } };
     case "notified":
       return { ...state, session: { ...state.session, lastNotifyAt: action.now } };
+    case "hydrate":
+      return action.state;
     case "reset":
       return defaultState();
   }
@@ -160,16 +187,62 @@ interface Store {
 
 const StoreContext = createContext<Store | null>(null);
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, load);
+const CLOUD_DEBOUNCE_MS = 1500;
 
+export function StoreProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const uid = user?.uid ?? null;
+  const [state, dispatch] = useReducer(reducer, uid, loadInitial);
+  const cloudTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cloudEnabled = db !== null && uid !== null;
+
+  // Hydratation depuis le cloud (une fois par utilisateur connecté).
+  useEffect(() => {
+    if (!cloudEnabled || !db || !uid) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const ref = doc(db, "movae", uid);
+        const snap = await getDoc(ref);
+        if (cancelled) return;
+        if (snap.exists() && snap.data().state) {
+          dispatch({ type: "hydrate", state: hydrateState(snap.data().state as Partial<MovaeState>) });
+        } else {
+          // Premier login : on pousse l'état local courant vers le cloud.
+          await setDoc(ref, { state, updatedAt: serverTimestamp() });
+        }
+      } catch (err) {
+        console.warn("[Movaé] Synchronisation cloud (lecture) impossible :", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // On ne veut relancer qu'au changement d'utilisateur.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid]);
+
+  // Écriture : localStorage immédiat + cloud débounce.
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(keyFor(uid), JSON.stringify(state));
     } catch {
       // stockage plein ou indisponible : l'app reste fonctionnelle en mémoire
     }
-  }, [state]);
+    if (!cloudEnabled || !db || !uid) return;
+    const database = db;
+    const userId = uid;
+    if (cloudTimer.current) clearTimeout(cloudTimer.current);
+    cloudTimer.current = setTimeout(() => {
+      setDoc(
+        doc(database, "movae", userId),
+        { state, updatedAt: serverTimestamp() },
+        { merge: true },
+      ).catch((err) =>
+        console.warn("[Movaé] Synchronisation cloud (écriture) impossible :", err),
+      );
+    }, CLOUD_DEBOUNCE_MS);
+  }, [state, uid, cloudEnabled]);
 
   return <StoreContext.Provider value={{ state, dispatch }}>{children}</StoreContext.Provider>;
 }

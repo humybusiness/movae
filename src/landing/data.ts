@@ -102,7 +102,11 @@ export const FAQ_ITEMS: FaqItem[] = [
   },
   {
     q: "Est-ce gratuit ?",
-    a: "Oui, la V1 est gratuite au lancement, sans compte ni carte bancaire.",
+    a: "Oui, la V1 est gratuite au lancement, sans carte bancaire.",
+  },
+  {
+    q: "Faut-il créer un compte ?",
+    a: "Non, c’est optionnel. Vous pouvez utiliser Movaé sans compte : vos données restent alors dans votre navigateur. Si vous créez un compte (Google ou e-mail), votre progression est synchronisée et vous la retrouvez sur tous vos appareils.",
   },
   {
     q: "Les rappels fonctionnent-ils quand l’app est fermée ?",
@@ -110,7 +114,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   },
   {
     q: "Est-ce que mon entreprise voit mon score ?",
-    a: "Non. La V1 est 100 % locale : vos données restent dans votre navigateur. Une future version entreprise ne devra utiliser que des statistiques anonymisées et agrégées.",
+    a: "Non. Vos données restent privées : dans votre navigateur sans compte, ou dans votre espace personnel sécurisé avec un compte. Une future version entreprise ne pourra utiliser que des statistiques anonymisées et agrégées.",
   },
 ];
 

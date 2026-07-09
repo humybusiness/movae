@@ -34,7 +34,7 @@ export function Footer() {
           {DISCLAIMER}
         </p>
         <p className="mt-3 text-xs text-encre-2">
-          © {new Date().getFullYear()} Movaé. Vos données restent dans votre navigateur.
+          © {new Date().getFullYear()} Movaé. Uniquement des statistiques de mouvement, jamais de caméra.
         </p>
       </Container>
     </footer>
