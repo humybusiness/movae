@@ -91,19 +91,20 @@ export function SettingsView() {
       <MCard className="mt-5 p-6">
         <div className="flex items-center gap-2">
           <Brain className="h-5 w-5 text-[var(--m-strong)]" aria-hidden />
-          <h3 className="font-display text-lg font-semibold">Intelligence Movaé</h3>
+          <h3 className="font-display text-lg font-semibold">IA Movaé — 100 % locale</h3>
         </div>
         <div className="mt-4 flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold">Moteur adaptatif</p>
+            <p className="text-sm font-semibold">IA adaptative</p>
             <p className="mt-0.5 text-xs text-[var(--m-ink2)]">
-              Movaé apprend localement : heures réceptives, cadence réelle, exercices
-              appréciés. Désactivé = rappels à cadence fixe, aucun apprentissage.
+              Analyse en continu 14 signaux non sensibles (heure, rythme, zones
+              sollicitées, vos retours…) pour proposer la bonne pause au bon moment.
+              Désactivée = rappels à cadence fixe, aucun apprentissage.
             </p>
           </div>
           <Toggle
             checked={state.prefs.smartMode}
-            label="Moteur adaptatif"
+            label="IA adaptative"
             onChange={(v) => dispatch({ type: "set-prefs", patch: { smartMode: v } })}
           />
         </div>

@@ -18,7 +18,7 @@
 
 import { EXERCISES, exerciseById, type Exercise } from "../data/exercises";
 import { REWARDS } from "../data/rewards";
-import { dayKey, minutesBetween, shiftDayKey } from "../../lib/time";
+import { dayKey, formatClock, minutesBetween, shiftDayKey } from "../../lib/time";
 import {
   ZONES,
   ZONE_LABELS,
@@ -452,6 +452,82 @@ export function yesterdayIndex(state: MovaeState, now: number): number | null {
 export function lastBreakExercise(state: MovaeState): Exercise | undefined {
   const last = state.history[state.history.length - 1];
   return last ? exerciseById(last.exerciseId) : undefined;
+}
+
+// ---------- L'IA Movaé, exposée en toute transparence ----------
+//
+// Tout ce que l'IA analyse est listé ici, tel quel, pour l'utilisateur.
+// Aucune donnée sensible : jamais de contenu de travail, jamais de caméra,
+// jamais de micro. Tout reste sur l'appareil.
+
+// Précision de l'IA : grandit avec la quantité de signaux appris (0..1).
+export function engineConfidence(state: MovaeState): number {
+  const breaks = Math.min(1, state.totals.breaks / 60) * 0.35;
+  const hours = Math.min(1, Object.keys(state.insights.hourly).length / 8) * 0.25;
+  const fbCount = Object.values(state.insights.exFeedback).reduce((s, f) => s + f.up + f.down, 0);
+  const fb = Math.min(1, fbCount / 20) * 0.2;
+  const cad = state.insights.cadenceAuto !== null ? 0.2 : 0;
+  return Math.min(1, 0.08 + breaks + hours + fb + cad); // 8 % de base (modèle physiologique)
+}
+
+export interface Signal {
+  label: string;
+  value: string;
+  learned?: boolean; // signal issu de l'apprentissage (vs mesuré en direct)
+}
+
+export function engineSignals(state: MovaeState, now: number): Signal[] {
+  const d = new Date(now);
+  const rec = getRecommendation(state, now);
+  const { r, n } = hourReceptivity(state.insights, d.getHours());
+  const fbCount = Object.values(state.insights.exFeedback).reduce((s, f) => s + f.up + f.down, 0);
+  const tried = Object.values(state.insights.exFeedback).filter((f) => f.done > 0).length;
+  const h = d.getHours() + d.getMinutes() / 60;
+  const topZone = rec.topZones[0];
+
+  const signals: Signal[] = [
+    { label: "Heure & jour", value: d.toLocaleDateString("fr-FR", { weekday: "short" }) + " " + formatClock(now) },
+    { label: "Contexte circadien", value: h >= 13.5 && h < 16 ? "creux post-déjeuner" : h >= 17 ? "fin de journée" : "plage standard" },
+    { label: "Temps depuis la dernière pause", value: `${Math.round(rec.sinceBreakMin)} min` },
+    { label: "Sollicitation max", value: topZone ? `${ZONE_LABELS[topZone]} ${Math.round(state.strain[topZone])}/100` : "—" },
+    { label: "8 zones du corps", value: "suivies en continu" },
+    { label: "Style de travail déclaré", value: state.profile.style },
+    { label: "Cadence réglée", value: `${state.profile.cadenceMin} min` },
+    {
+      label: "Cadence réellement observée",
+      value: state.insights.cadenceAuto !== null ? `${Math.round(state.insights.cadenceAuto)} min` : "en cours d'apprentissage",
+      learned: true,
+    },
+    {
+      label: "Réceptivité à cette heure",
+      value: n >= 3 ? `${Math.round(r * 100)} % (${n} propositions)` : "en cours d'apprentissage",
+      learned: true,
+    },
+    { label: "Vos retours 👍/👎", value: `${fbCount} notés`, learned: true },
+    { label: "Variété", value: `${tried}/100 exercices essayés`, learned: true },
+    { label: "Pauses passées", value: `${state.totals.breaks} analysées`, learned: true },
+    { label: "Discrétion requise", value: state.profile.style === "visio" ? "priorité aux exercices invisibles" : "libre" },
+    { label: "Focus en cours", value: state.session.snoozedUntil && state.session.snoozedUntil > now ? "oui — silence total" : "non" },
+  ];
+  return signals;
+}
+
+// Les prochaines fenêtres idéales prédites (heures où l'IA proposera une pause).
+export function nextWindows(state: MovaeState, now: number, count = 3): number[] {
+  const cadence = effectiveCadence(state);
+  const rec = getRecommendation(state, now);
+  const first = rec.nextIdealAt ?? now;
+  const windows: number[] = [];
+  for (let i = 0; i < count; i++) {
+    let t = first + i * cadence * 60000;
+    if (state.prefs.smartMode) {
+      // Décale hors des heures historiquement non réceptives (deep work habituel).
+      const { r, n } = hourReceptivity(state.insights, new Date(t).getHours());
+      if (n >= 3 && r <= 0.25) t += 45 * 60000;
+    }
+    windows.push(t);
+  }
+  return windows;
 }
 
 // Résumé de ce que le moteur a appris (affiché tel quel à l'utilisateur).

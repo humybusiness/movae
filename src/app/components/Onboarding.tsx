@@ -184,15 +184,15 @@ export function Onboarding({
               >
                 <div className="flex items-center gap-2">
                   <Brain className="h-5 w-5 text-[var(--m-strong)]" aria-hidden />
-                  <p className="text-sm font-bold">Moteur intelligent (recommandé)</p>
+                  <p className="text-sm font-bold">IA Movaé (recommandé)</p>
                   {smartMode && <Check className="ml-auto h-4 w-4 text-[var(--m-strong)]" aria-hidden />}
                 </div>
                 <ul className="mt-2 space-y-1 text-xs text-[var(--m-ink2)]">
-                  <li>• Apprend les heures où vous répondez aux pauses — et protège vos phases de concentration.</li>
-                  <li>• Ajuste doucement le rythme à votre cadence réelle (± 15 min autour de votre réglage).</li>
-                  <li>• Retient les exercices qui vous font du bien (vos 👍/👎) et varie les propositions.</li>
+                  <li>• Analyse en continu 14 signaux non sensibles : heure, rythme, sollicitation des 8 zones, vos retours…</li>
+                  <li>• Apprend vos heures réceptives et protège vos phases de concentration.</li>
+                  <li>• Ajuste le rythme à votre cadence réelle (± 15 min autour de votre réglage).</li>
                   <li className="font-semibold text-[var(--m-ink)]">
-                    Tout est stocké sur votre appareil (ou votre compte). Aucune caméra, aucun contenu de travail analysé.
+                    Transparente (chaque signal est visible dans l’app) et 100 % locale : rien n’est envoyé, tout est effaçable.
                   </li>
                 </ul>
               </button>

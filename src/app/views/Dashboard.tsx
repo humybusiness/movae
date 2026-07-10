@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import {
+  BrainCircuit,
   Check,
+  ChevronDown,
+  ChevronUp,
   Clock,
   Eye,
   Flame,
@@ -8,14 +11,18 @@ import {
   Lightbulb,
   Play,
   RefreshCw,
+  ShieldCheck,
   Sparkles,
   Swords,
   Target,
 } from "lucide-react";
 import { useMovae } from "../state/store";
 import {
+  engineConfidence,
+  engineSignals,
   getRecommendation,
   indexStatus,
+  nextWindows,
   todayIndex,
   todayStats,
   yesterdayIndex,
@@ -28,6 +35,7 @@ import { tipOfDay } from "../data/tips";
 import { dayKey, formatClock, formatDuration } from "../../lib/time";
 import { BodyMap } from "../components/BodyMap";
 import { ExerciseFigure } from "../components/ExerciseFigure";
+import { ExerciseVisual } from "../components/ExerciseVisual";
 import { IndexVisual } from "../components/IndexVisual";
 import { Chip, MButton, MCard, ProgressBar } from "../components/ui";
 import { URGENCY_LABELS, ZONE_COLORS, ZONE_LABELS, type UrgencyLevel, type Zone } from "../types";
@@ -87,6 +95,11 @@ export function Dashboard({
   const challengeDone = challengeDoneOn(state, todayKey);
   const tip = tipOfDay(todayKey);
   const lvl = levelFor(state.totals.breaks);
+
+  const [signalsOpen, setSignalsOpen] = useState(false);
+  const confidence = engineConfidence(state);
+  const signals = useMemo(() => engineSignals(state, now), [state, now]);
+  const windows = useMemo(() => (working ? nextWindows(state, now) : []), [state, now, working]);
 
   return (
     <div className="space-y-5">
@@ -242,6 +255,65 @@ export function Dashboard({
           )}
       </div>
 
+      {/* L'IA Movaé — transparente, 100 % locale */}
+      {state.prefs.smartMode && (
+        <MCard className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="flex items-center gap-2 text-sm font-bold">
+              <BrainCircuit className="h-4.5 w-4.5 text-[var(--m-strong)]" aria-hidden />
+              IA Movaé
+              <Chip tone="accent" className="ml-1">
+                <ShieldCheck className="h-3 w-3" aria-hidden />
+                100 % locale · rien d’envoyé
+              </Chip>
+            </p>
+            <div className="flex flex-wrap items-center gap-5 text-sm">
+              <span>
+                <span className="text-[var(--m-ink2)]">Précision : </span>
+                <span className="font-display text-lg font-bold text-[var(--m-strong)]">
+                  {Math.round(confidence * 100)} %
+                </span>
+                <span className="text-xs text-[var(--m-ink2)]"> (grandit avec l’usage)</span>
+              </span>
+              {windows.length > 0 && (
+                <span>
+                  <span className="text-[var(--m-ink2)]">Pauses prévues : </span>
+                  <span className="font-semibold tabular-nums">
+                    {windows.map((w) => formatClock(w)).join(" · ")}
+                  </span>
+                </span>
+              )}
+              <button
+                onClick={() => setSignalsOpen((s) => !s)}
+                aria-expanded={signalsOpen}
+                className="flex items-center gap-1 text-xs font-bold text-[var(--m-strong)] hover:underline"
+              >
+                {signals.length} signaux analysés
+                {signalsOpen ? <ChevronUp className="h-3.5 w-3.5" aria-hidden /> : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
+              </button>
+            </div>
+          </div>
+          {signalsOpen && (
+            <div className="mt-4 grid gap-1.5 border-t border-[var(--m-line)] pt-4 sm:grid-cols-2">
+              {signals.map((s) => (
+                <div key={s.label} className="flex items-baseline justify-between gap-3 rounded-lg bg-[var(--m-bg2)] px-3 py-1.5 text-xs">
+                  <span className="text-[var(--m-ink2)]">
+                    {s.label}
+                    {s.learned && <span className="ml-1 text-[var(--m-accent)]" title="signal appris">●</span>}
+                  </span>
+                  <span className="text-right font-semibold">{s.value}</span>
+                </div>
+              ))}
+              <p className="text-[11px] text-[var(--m-ink2)] sm:col-span-2">
+                ● = appris de vos habitudes. Jamais de contenu de travail, de frappe, de
+                caméra ni de micro. Tout est stocké sur votre appareil et effaçable dans
+                les réglages.
+              </p>
+            </div>
+          )}
+        </MCard>
+      )}
+
       {/* Objectif / série / récompense — gros chiffres, icônes colorées */}
       <div className="grid gap-5 sm:grid-cols-3">
         <MCard className="flex items-center gap-4 p-5">
@@ -327,8 +399,8 @@ export function Dashboard({
         </MCard>
 
         <MCard className="flex items-center gap-5 p-5">
-          <div className="shrink-0 rounded-2xl bg-[var(--m-bg2)]">
-            <ExerciseFigure motion={challenge.motion} size={96} />
+          <div className="shrink-0 overflow-hidden rounded-2xl bg-[var(--m-bg2)]">
+            <ExerciseVisual exerciseId={challenge.id} motion={challenge.motion} size={96} />
           </div>
           <div className="min-w-0 flex-1">
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest" style={{ color: ZONE_COLORS.energie }}>

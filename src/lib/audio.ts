@@ -33,8 +33,8 @@ export function hasBreathGuide(exerciseId: string): boolean {
   return exerciseId in BREATH_PATTERNS;
 }
 
-// Un cycle de souffle : de l'air, pas une note. Le bruit s'ouvre et devient
-// plus « clair » à l'inspiration, puis se referme lentement à l'expiration.
+// Un cycle de souffle : une vague très douce et lointaine, jamais agressive.
+// Le volume monte lentement à l'inspiration et retombe en long soupir.
 function cycle(pattern: BreathPattern) {
   if (!ctx || !filter || !gain) return;
   const now = ctx.currentTime;
@@ -43,22 +43,19 @@ function cycle(pattern: BreathPattern) {
   g.cancelScheduledValues(now);
   f.cancelScheduledValues(now);
   let t = now;
-  // Inspiration : le souffle s'ouvre (grave → clair).
+  // Inspiration : la vague approche, très progressivement.
   g.setValueAtTime(0.0001, t);
-  g.exponentialRampToValueAtTime(0.16, t + pattern.inhale);
-  f.setValueAtTime(320, t);
-  f.exponentialRampToValueAtTime(1100, t + pattern.inhale);
+  g.exponentialRampToValueAtTime(0.05, t + pattern.inhale);
+  f.setValueAtTime(220, t);
+  f.linearRampToValueAtTime(420, t + pattern.inhale);
   t += pattern.inhale;
   if (pattern.hold) {
-    g.setValueAtTime(0.1, t);
-    g.linearRampToValueAtTime(0.09, t + pattern.hold);
-    f.setValueAtTime(900, t + pattern.hold);
+    g.linearRampToValueAtTime(0.04, t + pattern.hold);
     t += pattern.hold;
   }
-  // Expiration : long soupir qui redescend et s'éteint.
-  g.setValueAtTime(0.14, t);
+  // Expiration : elle se retire, longuement.
   g.exponentialRampToValueAtTime(0.0001, t + pattern.exhale);
-  f.exponentialRampToValueAtTime(240, t + pattern.exhale);
+  f.linearRampToValueAtTime(180, t + pattern.exhale);
   t += pattern.exhale;
   if (pattern.holdOut) g.setValueAtTime(0.0001, t + pattern.holdOut);
 }
@@ -69,23 +66,24 @@ export function startBreathGuide(exerciseId: string): boolean {
   try {
     stopBreathGuide();
     ctx = new AudioContext();
-    // Souffle = bruit rose approximé (bruit blanc lissé), en boucle.
-    const seconds = 2;
+    // Souffle = bruit très profond (type vague lointaine) : lissage fort,
+    // aucune composante aiguë, volume volontairement bas.
+    const seconds = 3;
     const buffer = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     let last = 0;
     for (let i = 0; i < data.length; i++) {
       const white = Math.random() * 2 - 1;
-      last = last * 0.94 + white * 0.06; // lissage : moins agressif qu'un bruit blanc
-      data[i] = last * 6;
+      last = last * 0.988 + white * 0.012; // très lissé : grave et rond
+      data[i] = last * 14;
     }
     noise = ctx.createBufferSource();
     noise.buffer = buffer;
     noise.loop = true;
     filter = ctx.createBiquadFilter();
-    filter.type = "bandpass";
-    filter.frequency.value = 320;
-    filter.Q.value = 0.7;
+    filter.type = "lowpass"; // coupe tout ce qui siffle
+    filter.frequency.value = 300;
+    filter.Q.value = 0.4;
     gain = ctx.createGain();
     gain.gain.value = 0.0001;
     noise.connect(filter).connect(gain).connect(ctx.destination);
@@ -98,104 +96,6 @@ export function startBreathGuide(exerciseId: string): boolean {
   } catch {
     return false;
   }
-}
-
-// ============================================================================
-// AMBIANCES MOVAÉ — musique de concentration générative, 100 % locale.
-// Trois paysages sonores synthétisés (aucun fichier, aucun compte) :
-// pluie fine, océan (vagues lentes), forêt (vent dans les feuilles).
-// ============================================================================
-
-export type AmbienceKind = "pluie" | "ocean" | "foret";
-
-export const AMBIENCES: { id: AmbienceKind; label: string }[] = [
-  { id: "pluie", label: "Pluie" },
-  { id: "ocean", label: "Océan" },
-  { id: "foret", label: "Forêt" },
-];
-
-let ambCtx: AudioContext | null = null;
-let ambGain: GainNode | null = null;
-let ambBase = 0.2; // niveau propre à chaque ambiance
-
-export function startAmbience(kind: AmbienceKind, volume: number): boolean {
-  try {
-    stopAmbience();
-    ambCtx = new AudioContext();
-    const seconds = 4;
-    const buffer = ambCtx.createBuffer(1, ambCtx.sampleRate * seconds, ambCtx.sampleRate);
-    const data = buffer.getChannelData(0);
-    // Lissage différent = texture différente (pluie vive, océan profond, forêt douce)
-    const smooth = kind === "ocean" ? 0.985 : kind === "foret" ? 0.93 : 0.6;
-    const boost = kind === "ocean" ? 18 : kind === "foret" ? 7 : 2.4;
-    let last = 0;
-    for (let i = 0; i < data.length; i++) {
-      const white = Math.random() * 2 - 1;
-      last = last * smooth + white * (1 - smooth);
-      data[i] = last * boost;
-    }
-    const src = ambCtx.createBufferSource();
-    src.buffer = buffer;
-    src.loop = true;
-
-    const filter = ambCtx.createBiquadFilter();
-    if (kind === "pluie") {
-      filter.type = "highpass";
-      filter.frequency.value = 900;
-    } else if (kind === "ocean") {
-      filter.type = "lowpass";
-      filter.frequency.value = 480;
-    } else {
-      filter.type = "bandpass";
-      filter.frequency.value = 550;
-      filter.Q.value = 0.55;
-    }
-
-    ambGain = ambCtx.createGain();
-    ambBase = kind === "pluie" ? 0.16 : kind === "ocean" ? 0.34 : 0.26;
-    ambGain.gain.value = ambBase * volume;
-
-    src.connect(filter).connect(ambGain).connect(ambCtx.destination);
-
-    // Vie du paysage : vagues (océan) et rafales (forêt) via un LFO lent.
-    if (kind !== "pluie") {
-      const lfo = ambCtx.createOscillator();
-      lfo.frequency.value = kind === "ocean" ? 0.07 : 0.045;
-      const depth = ambCtx.createGain();
-      if (kind === "ocean") {
-        depth.gain.value = ambBase * volume * 0.55;
-        lfo.connect(depth).connect(ambGain.gain);
-      } else {
-        depth.gain.value = 220; // le vent balaye le filtre
-        lfo.connect(depth).connect(filter.frequency);
-      }
-      lfo.start();
-    }
-    src.start();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function setAmbienceVolume(volume: number): void {
-  if (ambGain && ambCtx) {
-    ambGain.gain.linearRampToValueAtTime(ambBase * volume, ambCtx.currentTime + 0.1);
-  }
-}
-
-export function stopAmbience(): void {
-  const old = ambCtx;
-  if (ambGain && ambCtx) {
-    try {
-      ambGain.gain.linearRampToValueAtTime(0.0001, ambCtx.currentTime + 0.25);
-    } catch {
-      /* ignore */
-    }
-  }
-  ambCtx = null;
-  ambGain = null;
-  if (old) setTimeout(() => old.close().catch(() => {}), 350);
 }
 
 export function stopBreathGuide(): void {

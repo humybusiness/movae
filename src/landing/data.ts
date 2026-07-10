@@ -53,8 +53,8 @@ export const FEATURES: Feature[] = [
   },
   {
     icon: "BellRing",
-    title: "Rappels doux",
-    text: "Le moteur analyse votre journée et ne vous prévient que quand c’est utile.",
+    title: "IA 100 % locale",
+    text: "14 signaux non sensibles analysés en continu, transparents et jamais envoyés en ligne.",
   },
   {
     icon: "TrendingUp",
