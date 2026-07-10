@@ -120,7 +120,7 @@ export function ExercisesView({
             <MCard key={ex.id} className="flex flex-col p-5 transition hover:-translate-y-0.5">
               <div className="flex items-start gap-4">
                 <div className="shrink-0 overflow-hidden rounded-xl bg-[var(--m-bg2)]">
-                  <ExerciseVisual exerciseId={ex.id} motion={ex.motion} size={92} />
+                  <ExerciseVisual motion={ex.motion} size={92} />
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-semibold leading-snug">{ex.name}</h3>

@@ -20,7 +20,8 @@ import {
 import { useAuth } from "../auth/AuthProvider";
 import { db } from "../../lib/firebase";
 import { dayKey } from "../../lib/time";
-import type { IndexStyleId, MovaeState, ThemeId, WorkStyle } from "../types";
+import { accessoryById, CLAY_PER_BREAK, CLAY_PER_PROGRAM } from "../data/accessories";
+import type { AvatarBody, AvatarState, IndexStyleId, MovaeState, ThemeId, WorkStyle } from "../types";
 
 const STORAGE_KEY = "movae:v1";
 
@@ -50,6 +51,7 @@ export function defaultState(): MovaeState {
       lastNotifyAt: null,
       snoozedUntil: null,
     },
+    avatar: { body: "m", clay: 0, owned: [], equipped: [] },
     strain: emptyStrain(),
     insights: emptyInsights(),
     history: [],
@@ -69,6 +71,7 @@ function hydrateState(parsed: Partial<MovaeState>): MovaeState {
     profile: { ...base.profile, ...parsed.profile },
     prefs: { ...base.prefs, ...parsed.prefs },
     session: { ...base.session, ...parsed.session },
+    avatar: { ...base.avatar, ...parsed.avatar },
     strain: { ...base.strain, ...parsed.strain },
     insights: {
       ...base.insights,
@@ -134,6 +137,9 @@ export type Action =
   | { type: "notified"; now: number }
   | { type: "exercise-feedback"; exerciseId: string; up: boolean }
   | { type: "program-done" }
+  | { type: "avatar-body"; body: AvatarBody }
+  | { type: "avatar-buy"; id: string }
+  | { type: "avatar-toggle"; id: string }
   | { type: "clear-insights" }
   | { type: "hydrate"; state: MovaeState }
   | { type: "reset" };
@@ -195,16 +201,49 @@ function reducer(state: MovaeState, action: Action): MovaeState {
       };
     case "tick":
       return applyTick(state, action.now, action.idle);
-    case "complete-break":
-      return applyBreak(state, action.exercise, action.now, action.actualSec);
+    case "complete-break": {
+      const next = applyBreak(state, action.exercise, action.now, action.actualSec);
+      return { ...next, avatar: { ...next.avatar, clay: next.avatar.clay + CLAY_PER_BREAK } };
+    }
     case "snooze":
       return { ...state, session: { ...state.session, snoozedUntil: action.until } };
     case "notified":
       return { ...state, session: { ...state.session, lastNotifyAt: action.now } };
     case "exercise-feedback":
       return applyExerciseFeedback(state, action.exerciseId, action.up);
-    case "program-done":
-      return applyProgramDone(state);
+    case "program-done": {
+      const next = applyProgramDone(state);
+      return { ...next, avatar: { ...next.avatar, clay: next.avatar.clay + CLAY_PER_PROGRAM } };
+    }
+    case "avatar-body":
+      return { ...state, avatar: { ...state.avatar, body: action.body } };
+    case "avatar-buy": {
+      const acc = accessoryById(action.id);
+      if (!acc || state.avatar.owned.includes(acc.id) || state.avatar.clay < acc.price) return state;
+      // Achat = équipé directement (remplace l'accessoire du même emplacement).
+      const equipped = state.avatar.equipped.filter((id) => accessoryById(id)?.slot !== acc.slot);
+      return {
+        ...state,
+        avatar: {
+          ...state.avatar,
+          clay: state.avatar.clay - acc.price,
+          owned: [...state.avatar.owned, acc.id],
+          equipped: [...equipped, acc.id],
+        },
+      };
+    }
+    case "avatar-toggle": {
+      const acc = accessoryById(action.id);
+      if (!acc || !state.avatar.owned.includes(acc.id)) return state;
+      if (state.avatar.equipped.includes(acc.id)) {
+        return {
+          ...state,
+          avatar: { ...state.avatar, equipped: state.avatar.equipped.filter((id) => id !== acc.id) },
+        };
+      }
+      const equipped = state.avatar.equipped.filter((id) => accessoryById(id)?.slot !== acc.slot);
+      return { ...state, avatar: { ...state.avatar, equipped: [...equipped, acc.id] } };
+    }
     case "clear-insights":
       return { ...state, insights: emptyInsights() };
     case "hydrate":
@@ -285,6 +324,16 @@ export function useMovae(): Store {
   const store = useContext(StoreContext);
   if (!store) throw new Error("useMovae doit être utilisé sous <StoreProvider>");
   return store;
+}
+
+// Variante tolérante pour les composants réutilisables (ex. figures 3D)
+// qui peuvent vivre hors du provider : rend null au lieu de jeter.
+export function useMovaeMaybe(): Store | null {
+  return useContext(StoreContext);
+}
+
+export function defaultAvatar(): AvatarState {
+  return defaultState().avatar;
 }
 
 export function exportStateAsJson(state: MovaeState): void {

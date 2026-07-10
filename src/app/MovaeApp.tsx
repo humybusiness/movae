@@ -9,6 +9,7 @@ import {
   Loader2,
   LogIn,
   LogOut,
+  PersonStanding,
   Play,
   Power,
   Settings,
@@ -25,6 +26,7 @@ import { BreakPlayer } from "./components/BreakPlayer";
 import { FocusTools } from "./components/FocusTools";
 import { Onboarding } from "./components/Onboarding";
 import { MButton } from "./components/ui";
+import { CharacterView } from "./views/CharacterView";
 import { Dashboard } from "./views/Dashboard";
 import { ExercisesView } from "./views/ExercisesView";
 import { ProgramsView } from "./views/ProgramsView";
@@ -35,12 +37,20 @@ import { showNotification } from "../lib/notify";
 import { setTrayState, systemIdleSeconds } from "../lib/desktop";
 import type { Zone } from "./types";
 
-type ViewId = "accueil" | "exercices" | "programmes" | "progression" | "recompenses" | "reglages";
+type ViewId =
+  | "accueil"
+  | "exercices"
+  | "programmes"
+  | "personnage"
+  | "progression"
+  | "recompenses"
+  | "reglages";
 
 const NAV: { id: ViewId; label: string; icon: typeof Home }[] = [
   { id: "accueil", label: "Accueil", icon: Home },
   { id: "exercices", label: "Exercices", icon: Dumbbell },
   { id: "programmes", label: "Programmes", icon: LayoutList },
+  { id: "personnage", label: "Personnage", icon: PersonStanding },
   { id: "progression", label: "Progression", icon: TrendingUp },
   { id: "recompenses", label: "Récompenses", icon: Award },
   { id: "reglages", label: "Réglages", icon: Settings },
@@ -358,6 +368,7 @@ function AppInner() {
             )}
             {view === "exercices" && <ExercisesView onStart={setQueue} initialZone={zoneReq} />}
             {view === "programmes" && <ProgramsView onStart={setQueue} />}
+            {view === "personnage" && <CharacterView />}
             {view === "progression" && <ProgressView now={now} />}
             {view === "recompenses" && <RewardsView />}
             {view === "reglages" && <SettingsView />}
@@ -393,6 +404,9 @@ function AppInner() {
           onCompleteExercise={(exercise, actualSec) => {
             const ex = exerciseById(exercise.id) ?? exercise;
             dispatch({ type: "complete-break", exercise: ex, now: Date.now(), actualSec });
+            const toast = { id: `clay-${Date.now()}`, text: "+5 d’argile pour votre personnage" };
+            setToasts((t) => [...t, toast]);
+            setTimeout(() => setToasts((t) => t.filter((x) => x.id !== toast.id)), 4000);
           }}
           onAllComplete={() => dispatch({ type: "program-done" })}
           onFeedback={

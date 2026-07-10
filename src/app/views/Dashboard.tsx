@@ -34,7 +34,7 @@ import { levelFor } from "../data/levels";
 import { tipOfDay } from "../data/tips";
 import { dayKey, formatClock, formatDuration } from "../../lib/time";
 import { BodyMap } from "../components/BodyMap";
-import { ExerciseFigure } from "../components/ExerciseFigure";
+import { ExerciseFigure3D } from "../components/ExerciseFigure3D";
 import { ExerciseVisual } from "../components/ExerciseVisual";
 import { IndexVisual } from "../components/IndexVisual";
 import { Chip, MButton, MCard, ProgressBar } from "../components/ui";
@@ -210,7 +210,7 @@ export function Dashboard({
 
               <div className="mt-4 flex flex-1 flex-wrap items-center gap-6">
                 <div className="shrink-0 rounded-3xl bg-[var(--m-card)] p-2" style={{ boxShadow: "var(--m-shadow)" }}>
-                  <ExerciseFigure motion={proposed.motion} size={148} animate />
+                  <ExerciseFigure3D motion={proposed.motion} size={148} animate />
                 </div>
                 <div className="min-w-52 flex-1">
                   <h2 className="font-display text-3xl font-semibold leading-tight tracking-tight">
@@ -400,7 +400,7 @@ export function Dashboard({
 
         <MCard className="flex items-center gap-5 p-5">
           <div className="shrink-0 overflow-hidden rounded-2xl bg-[var(--m-bg2)]">
-            <ExerciseVisual exerciseId={challenge.id} motion={challenge.motion} size={96} />
+            <ExerciseVisual motion={challenge.motion} size={96} />
           </div>
           <div className="min-w-0 flex-1">
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest" style={{ color: ZONE_COLORS.energie }}>

@@ -55,6 +55,17 @@ export const WORK_STYLE_LABELS: Record<WorkStyle, string> = {
 };
 
 export type ThemeId = "sauge" | "nuit-calme" | "sable" | "foret" | "aube" | "ocean";
+
+// ---------- Personnage argile ----------
+
+export type AvatarBody = "f" | "m";
+
+export interface AvatarState {
+  body: AvatarBody;
+  clay: number; // boulettes d'argile (monnaie gagnée avec les pauses)
+  owned: string[]; // accessoires achetés
+  equipped: string[]; // accessoires portés (un par emplacement)
+}
 export type IndexStyleId = "anneau" | "score" | "barres";
 export type SessionStatus = "off" | "working" | "away";
 
@@ -121,6 +132,7 @@ export interface MovaeState {
     lastNotifyAt: number | null;
     snoozedUntil: number | null;
   };
+  avatar: AvatarState;
   strain: Record<Zone, number>; // sollicitation estimée 0–100 par zone
   insights: Insights;
   history: BreakLog[];
