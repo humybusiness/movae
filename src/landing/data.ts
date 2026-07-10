@@ -58,8 +58,8 @@ export const FEATURES: Feature[] = [
   },
   {
     icon: "TrendingUp",
-    title: "Votre reflet",
-    text: "Une silhouette vivante qui se tasse quand vous vous tassez — et se redresse quand vous bougez.",
+    title: "BodyMap interactive",
+    text: "Chaque zone de votre corps colorée selon son état — cliquez, ses exercices s’ouvrent.",
   },
   {
     icon: "Gift",

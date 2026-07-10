@@ -100,6 +100,104 @@ export function startBreathGuide(exerciseId: string): boolean {
   }
 }
 
+// ============================================================================
+// AMBIANCES MOVAÉ — musique de concentration générative, 100 % locale.
+// Trois paysages sonores synthétisés (aucun fichier, aucun compte) :
+// pluie fine, océan (vagues lentes), forêt (vent dans les feuilles).
+// ============================================================================
+
+export type AmbienceKind = "pluie" | "ocean" | "foret";
+
+export const AMBIENCES: { id: AmbienceKind; label: string }[] = [
+  { id: "pluie", label: "Pluie" },
+  { id: "ocean", label: "Océan" },
+  { id: "foret", label: "Forêt" },
+];
+
+let ambCtx: AudioContext | null = null;
+let ambGain: GainNode | null = null;
+let ambBase = 0.2; // niveau propre à chaque ambiance
+
+export function startAmbience(kind: AmbienceKind, volume: number): boolean {
+  try {
+    stopAmbience();
+    ambCtx = new AudioContext();
+    const seconds = 4;
+    const buffer = ambCtx.createBuffer(1, ambCtx.sampleRate * seconds, ambCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    // Lissage différent = texture différente (pluie vive, océan profond, forêt douce)
+    const smooth = kind === "ocean" ? 0.985 : kind === "foret" ? 0.93 : 0.6;
+    const boost = kind === "ocean" ? 18 : kind === "foret" ? 7 : 2.4;
+    let last = 0;
+    for (let i = 0; i < data.length; i++) {
+      const white = Math.random() * 2 - 1;
+      last = last * smooth + white * (1 - smooth);
+      data[i] = last * boost;
+    }
+    const src = ambCtx.createBufferSource();
+    src.buffer = buffer;
+    src.loop = true;
+
+    const filter = ambCtx.createBiquadFilter();
+    if (kind === "pluie") {
+      filter.type = "highpass";
+      filter.frequency.value = 900;
+    } else if (kind === "ocean") {
+      filter.type = "lowpass";
+      filter.frequency.value = 480;
+    } else {
+      filter.type = "bandpass";
+      filter.frequency.value = 550;
+      filter.Q.value = 0.55;
+    }
+
+    ambGain = ambCtx.createGain();
+    ambBase = kind === "pluie" ? 0.16 : kind === "ocean" ? 0.34 : 0.26;
+    ambGain.gain.value = ambBase * volume;
+
+    src.connect(filter).connect(ambGain).connect(ambCtx.destination);
+
+    // Vie du paysage : vagues (océan) et rafales (forêt) via un LFO lent.
+    if (kind !== "pluie") {
+      const lfo = ambCtx.createOscillator();
+      lfo.frequency.value = kind === "ocean" ? 0.07 : 0.045;
+      const depth = ambCtx.createGain();
+      if (kind === "ocean") {
+        depth.gain.value = ambBase * volume * 0.55;
+        lfo.connect(depth).connect(ambGain.gain);
+      } else {
+        depth.gain.value = 220; // le vent balaye le filtre
+        lfo.connect(depth).connect(filter.frequency);
+      }
+      lfo.start();
+    }
+    src.start();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function setAmbienceVolume(volume: number): void {
+  if (ambGain && ambCtx) {
+    ambGain.gain.linearRampToValueAtTime(ambBase * volume, ambCtx.currentTime + 0.1);
+  }
+}
+
+export function stopAmbience(): void {
+  const old = ambCtx;
+  if (ambGain && ambCtx) {
+    try {
+      ambGain.gain.linearRampToValueAtTime(0.0001, ambCtx.currentTime + 0.25);
+    } catch {
+      /* ignore */
+    }
+  }
+  ambCtx = null;
+  ambGain = null;
+  if (old) setTimeout(() => old.close().catch(() => {}), 350);
+}
+
 export function stopBreathGuide(): void {
   if (timer) {
     clearInterval(timer);

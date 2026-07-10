@@ -30,7 +30,7 @@ import { BodyMap } from "../components/BodyMap";
 import { ExerciseFigure } from "../components/ExerciseFigure";
 import { IndexVisual } from "../components/IndexVisual";
 import { Chip, MButton, MCard, ProgressBar } from "../components/ui";
-import { URGENCY_LABELS, ZONE_COLORS, ZONE_LABELS, type UrgencyLevel } from "../types";
+import { URGENCY_LABELS, ZONE_COLORS, ZONE_LABELS, type UrgencyLevel, type Zone } from "../types";
 
 const URGENCY_TONES: Record<UrgencyLevel, string> = {
   fraiche: "bg-[var(--m-soft)] text-[var(--m-strong)]",
@@ -51,9 +51,11 @@ function greeting(name: string, now: number): string {
 export function Dashboard({
   now,
   onStartBreak,
+  onOpenZone,
 }: {
   now: number;
   onStartBreak: (queue: Exercise[]) => void;
+  onOpenZone: (zone: Zone) => void;
 }) {
   const { state, dispatch } = useMovae();
   const [altIndex, setAltIndex] = useState(-1);
@@ -122,37 +124,47 @@ export function Dashboard({
       )}
 
       <div className="grid gap-5 lg:grid-cols-3">
-        {/* Indice Movaé */}
-        <MCard className="flex flex-col items-center p-6 text-center">
-          <p className="text-xs font-bold uppercase tracking-widest text-[var(--m-ink2)]">
+        {/* LA BODYMAP — le cœur de Movaé */}
+        <MCard className="p-6 lg:col-span-2">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-display text-2xl font-semibold tracking-tight">BodyMap</h2>
+            <Chip tone={working ? "accent" : "neutral"}>{working ? "en direct" : "en veille"}</Chip>
+          </div>
+          <BodyMap strain={state.strain} onZoneClick={onOpenZone} />
+        </MCard>
+
+        {/* Indice Movaé (compact) */}
+        <MCard className="flex flex-col items-center p-5 text-center">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--m-ink2)]">
             Indice Movaé
           </p>
-          <div className="my-3 flex flex-1 items-center">
-            <IndexVisual value={index} style={state.prefs.indexStyle} />
+          <div className="my-2 flex flex-1 items-center">
+            <IndexVisual value={index} style={state.prefs.indexStyle} size={104} />
           </div>
-          <p className="font-semibold text-[var(--m-strong)]">{indexStatus(index)}</p>
+          <p className="text-sm font-semibold text-[var(--m-strong)]">{indexStatus(index)}</p>
           {yIndex !== null && (
             <p className="mt-0.5 text-xs text-[var(--m-ink2)]">
               {index >= yIndex ? "+" : ""}
               {index - yIndex} vs hier
             </p>
           )}
-          <div className="mt-4 w-full border-t border-[var(--m-line)] pt-3">
+          <div className="mt-3 w-full border-t border-[var(--m-line)] pt-2.5">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold">Niveau {lvl.level.n}</span>
               {lvl.next && (
                 <span className="text-[var(--m-ink2)]">
-                  {state.totals.breaks}/{lvl.next.threshold} pauses
+                  {state.totals.breaks}/{lvl.next.threshold}
                 </span>
               )}
             </div>
             {lvl.next && <ProgressBar className="mt-1.5" value={lvl.progress} max={1} />}
           </div>
         </MCard>
+      </div>
 
-        {/* Carte héro : prochaine pause */}
-        <div
-          className="rounded-2xl border border-[var(--m-line)] p-6 lg:col-span-2"
+      {/* Carte héro : prochaine pause */}
+      <div
+        className="rounded-2xl border border-[var(--m-line)] p-6"
           style={{
             boxShadow: "var(--m-shadow)",
             background: "linear-gradient(135deg, var(--m-soft) 0%, var(--m-card) 55%)",
@@ -228,7 +240,6 @@ export function Dashboard({
               </div>
             </div>
           )}
-        </div>
       </div>
 
       {/* Objectif / série / récompense — gros chiffres, icônes colorées */}
@@ -278,22 +289,8 @@ export function Dashboard({
         </MCard>
       </div>
 
-      {/* Carte du corps + journée */}
+      {/* Journée + défi du jour */}
       <div className="grid gap-5 lg:grid-cols-2">
-        <MCard className="p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-display text-lg font-semibold">Votre reflet</h3>
-            <Chip tone={working ? "accent" : "neutral"}>{working ? "en direct" : "en veille"}</Chip>
-          </div>
-          <BodyMap
-            strain={state.strain}
-            justMoved={state.session.lastBreakAt !== null && now - state.session.lastBreakAt < 2 * 60000}
-          />
-          <p className="mt-3 text-xs text-[var(--m-ink2)]">
-            Il se tasse quand vous vous tassez — et se redresse quand vous bougez.
-          </p>
-        </MCard>
-
         <MCard className="p-6">
           <h3 className="font-display text-lg font-semibold">Votre journée</h3>
           <div className="mt-4 flex gap-8">
@@ -328,10 +325,7 @@ export function Dashboard({
             </ul>
           )}
         </MCard>
-      </div>
 
-      {/* Défi du jour + conseil kiné */}
-      <div className="grid gap-5 lg:grid-cols-2">
         <MCard className="flex items-center gap-5 p-5">
           <div className="shrink-0 rounded-2xl bg-[var(--m-bg2)]">
             <ExerciseFigure motion={challenge.motion} size={96} />
@@ -355,15 +349,17 @@ export function Dashboard({
             )}
           </div>
         </MCard>
-        <MCard className="p-5">
-          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest" style={{ color: ZONE_COLORS.yeux }}>
-            <Lightbulb className="h-3.5 w-3.5" aria-hidden />
-            Le conseil kiné du jour
-          </p>
-          <h3 className="mt-1 font-display text-xl font-semibold">{tip.title}</h3>
-          <p className="mt-1 text-sm leading-relaxed text-[var(--m-ink2)]">{tip.text}</p>
-        </MCard>
       </div>
+
+      {/* Conseil kiné du jour */}
+      <MCard className="p-5">
+        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest" style={{ color: ZONE_COLORS.yeux }}>
+          <Lightbulb className="h-3.5 w-3.5" aria-hidden />
+          Le conseil kiné du jour
+        </p>
+        <h3 className="mt-1 font-display text-xl font-semibold">{tip.title}</h3>
+        <p className="mt-1 text-sm leading-relaxed text-[var(--m-ink2)]">{tip.text}</p>
+      </MCard>
     </div>
   );
 }

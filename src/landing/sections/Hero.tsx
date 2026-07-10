@@ -4,7 +4,7 @@ import { Container, Pill, PrimaryCta, Reveal, SecondaryCta } from "../shared";
 
 const PILLS = [
   "Créé par 3 étudiants kinés",
-  "Votre reflet en direct",
+  "BodyMap interactive",
   "100 exercices illustrés",
   "Application Windows",
   "Gratuit au lancement",

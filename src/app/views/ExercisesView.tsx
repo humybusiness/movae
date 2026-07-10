@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { EyeOff, Play, Search } from "lucide-react";
 import { EXERCISES, type Exercise } from "../data/exercises";
 import { ExerciseFigure } from "../components/ExerciseFigure";
@@ -33,8 +33,19 @@ function FilterChip({
   );
 }
 
-export function ExercisesView({ onStart }: { onStart: (queue: Exercise[]) => void }) {
-  const [zone, setZone] = useState<Zone | null>(null);
+export function ExercisesView({
+  onStart,
+  initialZone = null,
+}: {
+  onStart: (queue: Exercise[]) => void;
+  initialZone?: { z: Zone; n: number } | null;
+}) {
+  const [zone, setZone] = useState<Zone | null>(initialZone?.z ?? null);
+
+  // Arrivée depuis la BodyMap : applique la zone cliquée.
+  useEffect(() => {
+    if (initialZone) setZone(initialZone.z);
+  }, [initialZone]);
   const [position, setPosition] = useState<(typeof POSITIONS)[number] | null>(null);
   const [invisibleOnly, setInvisibleOnly] = useState(false);
   const [query, setQuery] = useState("");

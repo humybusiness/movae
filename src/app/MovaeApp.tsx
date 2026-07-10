@@ -33,6 +33,7 @@ import { RewardsView } from "./views/RewardsView";
 import { SettingsView } from "./views/SettingsView";
 import { showNotification } from "../lib/notify";
 import { setTrayState, systemIdleSeconds } from "../lib/desktop";
+import type { Zone } from "./types";
 
 type ViewId = "accueil" | "exercices" | "programmes" | "progression" | "recompenses" | "reglages";
 
@@ -122,6 +123,7 @@ function AppInner() {
   const { state, dispatch } = useMovae();
   const { user } = useAuth();
   const [view, setView] = useState<ViewId>("accueil");
+  const [zoneReq, setZoneReq] = useState<{ z: Zone; n: number } | null>(null);
   const [queue, setQueue] = useState<Exercise[] | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [toasts, setToasts] = useState<{ id: string; text: string }[]>([]);
@@ -344,8 +346,17 @@ function AppInner() {
           </header>
 
           <main className="flex-1 p-5 sm:p-6">
-            {view === "accueil" && <Dashboard now={now} onStartBreak={setQueue} />}
-            {view === "exercices" && <ExercisesView onStart={setQueue} />}
+            {view === "accueil" && (
+              <Dashboard
+                now={now}
+                onStartBreak={setQueue}
+                onOpenZone={(z) => {
+                  setZoneReq((q) => ({ z, n: (q?.n ?? 0) + 1 }));
+                  setView("exercices");
+                }}
+              />
+            )}
+            {view === "exercices" && <ExercisesView onStart={setQueue} initialZone={zoneReq} />}
             {view === "programmes" && <ProgramsView onStart={setQueue} />}
             {view === "progression" && <ProgressView now={now} />}
             {view === "recompenses" && <RewardsView />}

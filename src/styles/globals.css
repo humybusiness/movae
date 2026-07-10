@@ -142,6 +142,22 @@ body {
 @keyframes m-arrow-dash {
   to { stroke-dashoffset: -18; }
 }
+@keyframes m-breath-soft {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.012); }
+}
+
+/* Pastilles cliquables de la BodyMap */
+.bm-dot {
+  cursor: pointer;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.15s ease;
+}
+.bm-dot:hover,
+.bm-dot:focus-visible {
+  transform: scale(1.35);
+}
 
 @media (prefers-reduced-motion: reduce) {
   html {
