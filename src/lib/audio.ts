@@ -3,7 +3,8 @@
 // l'expiration. Permet de suivre les exercices de respiration yeux fermés.
 
 let ctx: AudioContext | null = null;
-let osc: OscillatorNode | null = null;
+let noise: AudioBufferSourceNode | null = null;
+let filter: BiquadFilterNode | null = null;
 let gain: GainNode | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
 
@@ -32,30 +33,34 @@ export function hasBreathGuide(exerciseId: string): boolean {
   return exerciseId in BREATH_PATTERNS;
 }
 
+// Un cycle de souffle : de l'air, pas une note. Le bruit s'ouvre et devient
+// plus « clair » à l'inspiration, puis se referme lentement à l'expiration.
 function cycle(pattern: BreathPattern) {
-  if (!ctx || !osc || !gain) return;
+  if (!ctx || !filter || !gain) return;
   const now = ctx.currentTime;
   const g = gain.gain;
-  const f = osc.frequency;
+  const f = filter.frequency;
   g.cancelScheduledValues(now);
   f.cancelScheduledValues(now);
   let t = now;
-  // Inspiration : le son monte (220 → 330 Hz) et s'ouvre.
-  g.setValueAtTime(0.001, t);
-  g.linearRampToValueAtTime(0.05, t + pattern.inhale);
-  f.setValueAtTime(220, t);
-  f.linearRampToValueAtTime(330, t + pattern.inhale);
+  // Inspiration : le souffle s'ouvre (grave → clair).
+  g.setValueAtTime(0.0001, t);
+  g.exponentialRampToValueAtTime(0.16, t + pattern.inhale);
+  f.setValueAtTime(320, t);
+  f.exponentialRampToValueAtTime(1100, t + pattern.inhale);
   t += pattern.inhale;
   if (pattern.hold) {
-    g.setValueAtTime(0.05, t + pattern.hold);
-    f.setValueAtTime(330, t + pattern.hold);
+    g.setValueAtTime(0.1, t);
+    g.linearRampToValueAtTime(0.09, t + pattern.hold);
+    f.setValueAtTime(900, t + pattern.hold);
     t += pattern.hold;
   }
-  // Expiration : redescend et se referme.
-  g.linearRampToValueAtTime(0.001, t + pattern.exhale);
-  f.linearRampToValueAtTime(200, t + pattern.exhale);
+  // Expiration : long soupir qui redescend et s'éteint.
+  g.setValueAtTime(0.14, t);
+  g.exponentialRampToValueAtTime(0.0001, t + pattern.exhale);
+  f.exponentialRampToValueAtTime(240, t + pattern.exhale);
   t += pattern.exhale;
-  if (pattern.holdOut) t += pattern.holdOut;
+  if (pattern.holdOut) g.setValueAtTime(0.0001, t + pattern.holdOut);
 }
 
 export function startBreathGuide(exerciseId: string): boolean {
@@ -64,15 +69,27 @@ export function startBreathGuide(exerciseId: string): boolean {
   try {
     stopBreathGuide();
     ctx = new AudioContext();
-    osc = ctx.createOscillator();
+    // Souffle = bruit rose approximé (bruit blanc lissé), en boucle.
+    const seconds = 2;
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < data.length; i++) {
+      const white = Math.random() * 2 - 1;
+      last = last * 0.94 + white * 0.06; // lissage : moins agressif qu'un bruit blanc
+      data[i] = last * 6;
+    }
+    noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    noise.loop = true;
+    filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = 320;
+    filter.Q.value = 0.7;
     gain = ctx.createGain();
-    const soft = ctx.createBiquadFilter();
-    soft.type = "lowpass";
-    soft.frequency.value = 600;
-    osc.type = "sine";
-    gain.gain.value = 0.001;
-    osc.connect(soft).connect(gain).connect(ctx.destination);
-    osc.start();
+    gain.gain.value = 0.0001;
+    noise.connect(filter).connect(gain).connect(ctx.destination);
+    noise.start();
     const total =
       (pattern.inhale + (pattern.hold ?? 0) + pattern.exhale + (pattern.holdOut ?? 0)) * 1000;
     cycle(pattern);
@@ -90,13 +107,15 @@ export function stopBreathGuide(): void {
   }
   if (gain && ctx) {
     try {
+      gain.gain.cancelScheduledValues(ctx.currentTime);
       gain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
     } catch {
       /* ignore */
     }
   }
   const oldCtx = ctx;
-  osc = null;
+  noise = null;
+  filter = null;
   gain = null;
   ctx = null;
   if (oldCtx) setTimeout(() => oldCtx.close().catch(() => {}), 400);

@@ -282,7 +282,7 @@ export function Dashboard({
       <div className="grid gap-5 lg:grid-cols-2">
         <MCard className="p-6">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-display text-lg font-semibold">Votre jumeau</h3>
+            <h3 className="font-display text-lg font-semibold">Votre reflet</h3>
             <Chip tone={working ? "accent" : "neutral"}>{working ? "en direct" : "en veille"}</Chip>
           </div>
           <BodyMap

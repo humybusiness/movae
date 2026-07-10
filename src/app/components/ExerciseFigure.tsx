@@ -172,8 +172,8 @@ function SideBody({ pose, stand, ghost, target }: { pose: FullSide; stand: boole
   const gazeTarget = { x: lerp(80, 106, pose.gaze), y: lerp(42, 20, pose.gaze) };
   return (
     <g opacity={op} strokeLinecap="round" strokeLinejoin="round" fill="none">
-      {/* membres éloignés */}
-      <g stroke={stroke} opacity={0.38}>
+      {/* membres éloignés (très estompés : pas de confusion avec le mouvement) */}
+      <g stroke={stroke} opacity={0.2}>
         <path d={L({ x: j.pelvis.x - 3, y: j.pelvis.y }, { x: j.kneeF.x - 3, y: j.kneeF.y })} strokeWidth={6} />
         <path d={L({ x: j.kneeF.x - 3, y: j.kneeF.y }, { x: j.ankleF.x - 3, y: j.ankleF.y })} strokeWidth={6} />
         <path d={L({ x: j.ankleF.x - 3, y: j.ankleF.y }, { x: j.toeF.x - 3, y: j.toeF.y })} strokeWidth={5} />
@@ -375,103 +375,156 @@ function FaceScene({ kind, p, staticMode }: { kind: FaceKind; p: number; staticM
 
 function HandsScene({ kind, p, staticMode }: { kind: HandsKind; p: number; staticMode: boolean }) {
   const stroke = "var(--m-strong)";
-  const t = staticMode ? 0.75 : (p < 0.5 ? p * 2 : 2 - p * 2);
+  const t = staticMode ? 0.85 : (p < 0.5 ? p * 2 : 2 - p * 2);
   const eased = easeInOut(t);
-  const wrist = { x: 58, y: 64 };
 
-  if (kind === "prayer" || kind === "prayer-inv") {
-    const inv = kind === "prayer-inv";
-    const dy = eased * 6;
-    return (
-      <g fill="none" strokeLinecap="round">
-        <path d={`M30 ${86 + dy * (inv ? -1 : 0)} L52 ${70 + dy}`} stroke={stroke} strokeWidth={7} />
-        <path d={`M90 ${86 + dy * (inv ? -1 : 0)} L68 ${70 + dy}`} stroke={stroke} strokeWidth={7} />
-        <ellipse cx={56} cy={inv ? 78 + dy : 58 + dy} rx={5} ry={12} stroke={stroke} strokeWidth={3.5} transform={inv ? `rotate(180 56 ${78 + dy})` : undefined} />
-        <ellipse cx={64} cy={inv ? 78 + dy : 58 + dy} rx={5} ry={12} stroke={stroke} strokeWidth={3.5} transform={inv ? `rotate(180 64 ${78 + dy})` : undefined} />
-        <path d={inv ? "M46 60 L46 50 M74 60 L74 50" : "M46 74 L46 84 M74 74 L74 84"} stroke="var(--m-accent)" strokeWidth={2.2} />
-      </g>
-    );
-  }
-
+  // ---- Éventail / poing : une grande main de face, immédiatement lisible ----
   if (kind === "finger-fan" || kind === "fist") {
     const open = kind === "finger-fan" ? eased : 1 - eased;
-    const fingers = [-24, -8, 8, 24];
+    const palm = { x: 60, y: 76 };
     return (
       <g fill="none" strokeLinecap="round">
-        <path d="M22 92 L52 74" stroke={stroke} strokeWidth={8} />
-        <ellipse cx={60} cy={68} rx={9} ry={11} stroke={stroke} strokeWidth={3.5} transform="rotate(-25 60 68)" />
-        {fingers.map((a, i) => {
-          const len = 6 + open * 9;
-          const angle = rad(-25 + a * (0.4 + open * 0.6) - 90);
+        <path d="M60 110 L60 88" stroke={stroke} strokeWidth={13} />
+        <ellipse cx={palm.x} cy={palm.y} rx={13} ry={14} stroke={stroke} strokeWidth={4.5} fill="var(--m-card)" />
+        {[-2, -1, 0, 1, 2].map((i) => {
+          const ang = rad(i * (5 + open * 10));
+          const len = 8 + open * 13;
+          const x0 = palm.x + i * 4.8;
+          const y0 = palm.y - 12.5;
           return (
             <path
               key={i}
-              d={L({ x: 62 + Math.cos(rad(-25 - 90 + a * 0.3)) * 9, y: 60 }, {
-                x: 62 + Math.cos(angle) * (9 + len),
-                y: 62 + Math.sin(angle) * (9 + len),
-              })}
+              d={`M${x0} ${y0} L${(x0 + Math.sin(ang) * len).toFixed(1)} ${(y0 - Math.cos(ang) * len).toFixed(1)}`}
               stroke={stroke}
-              strokeWidth={3.2}
+              strokeWidth={4.2}
             />
           );
         })}
-        <path d="M84 44 A 10 10 0 0 1 94 54" stroke="var(--m-accent)" strokeWidth={2.2} strokeDasharray="3 3" />
+        <path
+          d={`M${palm.x - 12.5} ${palm.y - 2} L${(palm.x - 17 - open * 5).toFixed(1)} ${(palm.y - 9 - open * 3).toFixed(1)}`}
+          stroke={stroke}
+          strokeWidth={4.2}
+        />
+        <path
+          d={kind === "finger-fan" ? "M30 34 A 32 32 0 0 1 90 34" : "M42 32 L60 44 M78 32 L60 44"}
+          stroke="var(--m-accent)"
+          strokeWidth={3}
+          strokeLinecap="round"
+          markerEnd="url(#m-arrowhead)"
+        />
       </g>
     );
   }
 
-  // vue « bras tendu » commune aux étirements/rotations de poignet
+  // ---- Prière : deux paumes jointes au centre, mouvement vertical clair ----
+  if (kind === "prayer" || kind === "prayer-inv") {
+    const inv = kind === "prayer-inv";
+    const dy = eased * 7 * (inv ? -1 : 1);
+    const cy = 60 + dy;
+    return (
+      <g fill="none" strokeLinecap="round">
+        <path d={`M26 102 L49 ${cy + 15}`} stroke={stroke} strokeWidth={10} />
+        <path d={`M94 102 L71 ${cy + 15}`} stroke={stroke} strokeWidth={10} />
+        <rect x={48.5} y={inv ? cy - 4 : cy - 22} width={11} height={28} rx={5.5} stroke={stroke} strokeWidth={4} fill="var(--m-card)" />
+        <rect x={60.5} y={inv ? cy - 4 : cy - 22} width={11} height={28} rx={5.5} stroke={stroke} strokeWidth={4} fill="var(--m-card)" />
+        <path
+          d={inv ? `M36 ${cy + 6} L36 ${cy - 8}` : `M36 ${cy - 4} L36 ${cy + 10}`}
+          stroke="var(--m-accent)"
+          strokeWidth={3}
+          markerEnd="url(#m-arrowhead)"
+        />
+        <path
+          d={inv ? `M84 ${cy + 6} L84 ${cy - 8}` : `M84 ${cy - 4} L84 ${cy + 10}`}
+          stroke="var(--m-accent)"
+          strokeWidth={3}
+          markerEnd="url(#m-arrowhead)"
+        />
+      </g>
+    );
+  }
+
+  // ---- Profil « avant-bras + main » : étirements, cercles, rotations ----
+  const wrist = { x: 60, y: 62 };
   const rot =
-    kind === "wrist-flex" ? lerp(8, 52, eased)
-    : kind === "wrist-ext" ? lerp(-4, -48, eased)
-    : kind === "wrist-circles" ? Math.sin(p * Math.PI * 2) * 42
-    : kind === "shake" ? Math.sin(p * Math.PI * 8) * 22
-    : kind === "flip" ? 0
+    kind === "wrist-flex" ? lerp(5, 55, eased)
+    : kind === "wrist-ext" ? lerp(-5, -55, eased)
+    : kind === "wrist-circles" ? Math.sin(p * Math.PI * 2) * 45
+    : kind === "shake" ? Math.sin(p * Math.PI * 10) * 18
     : 0;
   const flip = kind === "flip" ? Math.cos(p * Math.PI * 2) : 1;
-  const slide = kind === "forearm-massage" ? lerp(30, 48, eased) : 0;
+  const slide = kind === "forearm-massage" ? lerp(26, 48, eased) : 0;
   return (
     <g fill="none" strokeLinecap="round">
-      <path d={L({ x: 14, y: 76 }, wrist)} stroke={stroke} strokeWidth={8} />
-      <g transform={`rotate(${rot} ${wrist.x} ${wrist.y})`}>
+      {/* avant-bras bien identifiable */}
+      <path d={`M14 72 L${wrist.x - 3} ${wrist.y + 3}`} stroke={stroke} strokeWidth={11} />
+      {/* main : paume + 4 doigts parallèles, pivotant autour du poignet */}
+      <g transform={`rotate(${rot.toFixed(1)} ${wrist.x} ${wrist.y})`}>
         <ellipse
-          cx={wrist.x + 12}
-          cy={wrist.y - 2}
-          rx={Math.max(2.5, 8 * Math.abs(kind === "flip" ? flip : 1))}
-          ry={10}
+          cx={wrist.x + 9}
+          cy={wrist.y - 1}
+          rx={Math.max(3, 7.5 * Math.abs(flip))}
+          ry={9.5}
           stroke={stroke}
-          strokeWidth={3.5}
-          transform={`rotate(78 ${wrist.x + 12} ${wrist.y - 2})`}
+          strokeWidth={4}
+          fill="var(--m-card)"
+          transform={`rotate(74 ${wrist.x + 9} ${wrist.y - 1})`}
         />
-        {[-9, -3, 3, 9].map((o) => (
-          <path key={o} d={L({ x: wrist.x + 18, y: wrist.y - 2 + o * 0.5 }, { x: wrist.x + 27, y: wrist.y - 4 + o })} stroke={stroke} strokeWidth={3} />
+        {[-5, -1.7, 1.7, 5].map((o) => (
+          <path
+            key={o}
+            d={`M${wrist.x + 15} ${wrist.y - 1 + o * 0.75} L${wrist.x + 28} ${wrist.y - 2 + o}`}
+            stroke={stroke}
+            strokeWidth={3.8}
+          />
         ))}
-        {kind === "flip" && flip > 0.2 && <circle cx={wrist.x + 12} cy={wrist.y - 2} r={2} fill="var(--m-accent)" stroke="none" />}
+        {kind === "flip" && flip > 0.2 && (
+          <circle cx={wrist.x + 9} cy={wrist.y - 1} r={2.2} fill="var(--m-accent)" stroke="none" />
+        )}
       </g>
+      {/* indications par exercice */}
       {(kind === "wrist-flex" || kind === "wrist-ext") && (
         <g>
-          <ellipse cx={92} cy={kind === "wrist-flex" ? 82 : 42} rx={7} ry={9} stroke={stroke} strokeWidth={3} opacity={0.65} />
+          {/* l'autre main qui tire, esquissée */}
+          <ellipse
+            cx={94}
+            cy={kind === "wrist-flex" ? 84 : 40}
+            rx={7}
+            ry={9}
+            stroke={stroke}
+            strokeWidth={3.5}
+            opacity={0.5}
+          />
           <path
-            d={kind === "wrist-flex" ? "M96 56 A 16 16 0 0 1 92 74" : "M96 72 A 16 16 0 0 0 92 52"}
+            d={kind === "wrist-flex" ? "M98 52 A 20 20 0 0 1 93 76" : "M98 74 A 20 20 0 0 0 93 48"}
             stroke="var(--m-accent)"
-            strokeWidth={2.2}
+            strokeWidth={3}
+            markerEnd="url(#m-arrowhead)"
           />
         </g>
       )}
       {kind === "wrist-circles" && (
-        <path d="M88 46 A 12 12 0 1 1 76 40" stroke="var(--m-accent)" strokeWidth={2.2} strokeDasharray="3 3" />
+        <path d="M92 44 A 13 13 0 1 1 78 38" stroke="var(--m-accent)" strokeWidth={3} strokeDasharray="4 4" markerEnd="url(#m-arrowhead)" />
+      )}
+      {kind === "flip" && (
+        <path d="M96 46 A 12 12 0 1 1 96 70" stroke="var(--m-accent)" strokeWidth={3} strokeDasharray="4 4" markerEnd="url(#m-arrowhead)" />
       )}
       {kind === "thumb" && (
-        <circle cx={wrist.x + 24 + (staticMode ? 4 : Math.floor(p * 4) * 3 - 4)} cy={wrist.y - 6} r={2.6} fill="var(--m-accent)" stroke="none" />
+        <circle
+          cx={wrist.x + 26}
+          cy={wrist.y - 5 + (staticMode ? 2 : Math.floor(p * 4) * 3 - 4)}
+          r={3}
+          fill="var(--m-accent)"
+          stroke="none"
+        />
       )}
       {kind === "forearm-massage" && (
         <g>
-          <ellipse cx={slide} cy={68} rx={7} ry={9} stroke={stroke} strokeWidth={3} opacity={0.75} />
-          <path d="M28 54 H50 M46 51 l4 3 -4 3" stroke="var(--m-accent)" strokeWidth={2.2} />
+          <ellipse cx={slide} cy={66} rx={7.5} ry={9.5} stroke={stroke} strokeWidth={3.5} opacity={0.8} fill="var(--m-card)" />
+          <path d="M26 50 H52" stroke="var(--m-accent)" strokeWidth={3} markerEnd="url(#m-arrowhead)" />
         </g>
       )}
       {kind === "shake" && (
-        <path d="M84 40 l6 -5 M84 46 l8 0 M84 52 l6 5" stroke="var(--m-accent)" strokeWidth={2.2} />
+        <path d="M88 38 l7 -5 M88 46 l9 0 M88 54 l7 5" stroke="var(--m-accent)" strokeWidth={3} />
       )}
     </g>
   );
@@ -557,9 +610,6 @@ export function ExerciseFigure({
     body = (
       <>
         <SideScene stand={motion.stand} desk={motion.desk} />
-        {staticMode && frames.length > 1 && (
-          <SideBody pose={frames[0]} stand={Boolean(motion.stand)} ghost />
-        )}
         <SideBody
           pose={staticMode ? frames[frames.length - 1] : poseAt(eased)}
           stand={Boolean(motion.stand)}
@@ -575,12 +625,7 @@ export function ExerciseFigure({
       const i = Math.min(frames.length - 2, Math.floor(seg));
       return lerpFront(frames[i], frames[i + 1], seg - i);
     };
-    body = (
-      <>
-        {staticMode && frames.length > 1 && <FrontBody pose={frames[0]} ghost />}
-        <FrontBody pose={staticMode ? frames[frames.length - 1] : poseAt(eased)} />
-      </>
-    );
+    body = <FrontBody pose={staticMode ? frames[frames.length - 1] : poseAt(eased)} />;
   } else if (motion.view === "face") {
     body = <FaceScene kind={motion.kind} p={phase} staticMode={staticMode} />;
   } else {

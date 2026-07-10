@@ -22,6 +22,7 @@ import { exerciseById, type Exercise } from "./data/exercises";
 import { rewardById } from "./data/rewards";
 import { themeById } from "./data/themes";
 import { BreakPlayer } from "./components/BreakPlayer";
+import { FocusTools } from "./components/FocusTools";
 import { Onboarding } from "./components/Onboarding";
 import { MButton } from "./components/ui";
 import { Dashboard } from "./views/Dashboard";
@@ -284,6 +285,7 @@ function AppInner() {
             ))}
           </nav>
           <div className="space-y-3">
+            <FocusTools />
             <AccountBadge />
             <p className="px-1 text-[11px] leading-relaxed text-[var(--m-ink2)]">
               Créé par des étudiants kinés.

@@ -58,8 +58,8 @@ export const FEATURES: Feature[] = [
   },
   {
     icon: "TrendingUp",
-    title: "Jumeau corporel",
-    text: "Votre double vivant se tasse quand vous vous tassez — et se redresse quand vous bougez.",
+    title: "Votre reflet",
+    text: "Une silhouette vivante qui se tasse quand vous vous tassez — et se redresse quand vous bougez.",
   },
   {
     icon: "Gift",
