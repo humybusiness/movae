@@ -4,8 +4,8 @@ import { ACCESSORIES, CLAY_PER_BREAK, CLAY_PER_PROGRAM, SLOT_LABELS } from "../d
 import { CharacterStage } from "../components/ExerciseFigure3D";
 import { Chip, MButton, MCard, SectionTitle } from "../components/ui";
 
-// Menu Personnage : choix du corps (féminin/masculin), solde d'argile et
-// boutique d'accessoires 3D. L'argile se gagne uniquement en bougeant —
+// Menu Personnage : choix du corps (féminin/masculin), solde d'élans et
+// boutique d'accessoires 3D. Les élans se gagnent uniquement en bougeant —
 // c'est la même philosophie que le reste de Movaé : la récompense suit
 // le mouvement, jamais l'inverse.
 
@@ -17,7 +17,7 @@ function ClayBadge({ amount }: { amount: number }) {
         style={{ background: "radial-gradient(circle at 35% 30%, #D89974, #B06A45)" }}
         aria-hidden
       />
-      {amount} d’argile
+      {amount} élan{amount > 1 ? "s" : ""}
     </span>
   );
 }
@@ -30,7 +30,7 @@ export function CharacterView() {
     <div className="mx-auto max-w-5xl">
       <SectionTitle
         title="Votre personnage"
-        subtitle="Il fait chaque exercice avec vous. Gagnez de l’argile en bougeant, façonnez-le à votre image."
+        subtitle="Il fait chaque exercice avec vous. Gagnez des élans en bougeant, façonnez-le à votre image."
       />
 
       <div className="grid gap-5 lg:grid-cols-[auto_1fr]">
@@ -56,7 +56,7 @@ export function CharacterView() {
           <ClayBadge amount={avatar.clay} />
           <p className="max-w-64 text-center text-xs leading-relaxed text-[var(--m-ink2)]">
             <Sparkles className="mr-1 inline h-3.5 w-3.5 text-[var(--m-accent)]" aria-hidden />
-            +{CLAY_PER_BREAK} d’argile par pause terminée, +{CLAY_PER_PROGRAM} par programme complet.
+            +{CLAY_PER_BREAK} élans par pause terminée, +{CLAY_PER_PROGRAM} par programme complet.
           </p>
         </MCard>
 
@@ -81,7 +81,7 @@ export function CharacterView() {
                       </div>
                     </div>
                     <Chip tone={owned ? "accent" : "neutral"}>
-                      {owned ? (equipped ? "Porté" : "Possédé") : `${acc.price} argile`}
+                      {owned ? (equipped ? "Porté" : "Possédé") : `${acc.price} élans`}
                     </Chip>
                   </div>
                   <p className="text-xs leading-relaxed text-[var(--m-ink2)]">{acc.desc}</p>
@@ -106,14 +106,14 @@ export function CharacterView() {
                         className="w-full !py-2"
                         disabled={!affordable}
                         onClick={() => dispatch({ type: "avatar-buy", id: acc.id })}
-                        title={affordable ? undefined : "Terminez des pauses pour gagner de l’argile"}
+                        title={affordable ? undefined : "Terminez des pauses pour gagner des élans"}
                       >
                         {affordable ? (
                           "Façonner"
                         ) : (
                           <>
                             <Lock className="h-4 w-4" aria-hidden />
-                            Encore {acc.price - avatar.clay} d’argile
+                            Encore {acc.price - avatar.clay} élans
                           </>
                         )}
                       </MButton>

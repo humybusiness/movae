@@ -18,6 +18,7 @@ import {
 import { StoreProvider, useMovae } from "./state/store";
 import { AuthProvider, useAuth } from "./auth/AuthProvider";
 import { Login } from "./auth/Login";
+import { activity } from "./engine/activity";
 import { getRecommendation } from "./engine/engine";
 import { exerciseById, type Exercise } from "./data/exercises";
 import { rewardById } from "./data/rewards";
@@ -147,8 +148,23 @@ function AppInner() {
   // ---- Suivi d'activité (souris / clavier, local uniquement) ----
   useEffect(() => {
     let lastMove = 0;
-    const onInput = () => {
+    // Analyse d'activité : on COMPTE (frappes, clics, molette), on ne lit
+    // jamais quelle touche ni quel contenu — voir engine/activity.ts.
+    const onKey = () => {
       lastInputAt.current = Date.now();
+      activity.key();
+    };
+    const onPointer = () => {
+      lastInputAt.current = Date.now();
+      activity.click();
+    };
+    const onWheel = () => {
+      const t = Date.now();
+      activity.scroll(t);
+      if (t - lastMove > 2000) {
+        lastMove = t;
+        lastInputAt.current = t;
+      }
     };
     const onMove = () => {
       const t = Date.now();
@@ -157,14 +173,14 @@ function AppInner() {
         lastInputAt.current = t;
       }
     };
-    window.addEventListener("keydown", onInput);
-    window.addEventListener("pointerdown", onInput);
-    window.addEventListener("wheel", onMove, { passive: true });
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onPointer);
+    window.addEventListener("wheel", onWheel, { passive: true });
     window.addEventListener("mousemove", onMove, { passive: true });
     return () => {
-      window.removeEventListener("keydown", onInput);
-      window.removeEventListener("pointerdown", onInput);
-      window.removeEventListener("wheel", onMove);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointer);
+      window.removeEventListener("wheel", onWheel);
       window.removeEventListener("mousemove", onMove);
     };
   }, []);
@@ -181,6 +197,7 @@ function AppInner() {
           ? sysIdle * 1000 > IDLE_AFTER_MS
           : document.visibilityState === "visible" && t - lastInputAt.current > IDLE_AFTER_MS;
       dispatch({ type: "tick", now: t, idle });
+      activity.update(t, !idle);
       setNow(t);
     };
     void tick();
@@ -194,7 +211,7 @@ function AppInner() {
   }, [dispatch]);
 
   // ---- Rappels doux ----
-  const rec = useMemo(() => getRecommendation(state, now), [state, now]);
+  const rec = useMemo(() => getRecommendation(state, now, activity.hint(now)), [state, now]);
 
   // ---- Icône vivante (bureau) : le logo du tray se tasse avec votre corps ----
   const lastTray = useRef(-1);
@@ -317,6 +334,20 @@ function AppInner() {
                 <span className="font-display text-base">Movaé</span>
               </p>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setView("personnage")}
+                  title="Vos élans — l'atelier du personnage"
+                  aria-label={`${state.avatar.clay} élans — ouvrir l'atelier du personnage`}
+                  className="flex items-center gap-1.5 rounded-full bg-[var(--m-soft)] px-3 py-1.5 text-xs font-bold text-[var(--m-strong)] transition hover:brightness-105"
+                >
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full"
+                    style={{ background: "radial-gradient(circle at 35% 30%, #D89974, #B06A45)" }}
+                    aria-hidden
+                  />
+                  {state.avatar.clay}
+                  <span className="hidden sm:inline">élan{state.avatar.clay > 1 ? "s" : ""}</span>
+                </button>
                 <span className="lg:hidden">
                   <AccountBadge compact />
                 </span>
@@ -404,7 +435,8 @@ function AppInner() {
           onCompleteExercise={(exercise, actualSec) => {
             const ex = exerciseById(exercise.id) ?? exercise;
             dispatch({ type: "complete-break", exercise: ex, now: Date.now(), actualSec });
-            const toast = { id: `clay-${Date.now()}`, text: "+5 d’argile pour votre personnage" };
+            activity.consumeEpisodeEnd();
+            const toast = { id: `clay-${Date.now()}`, text: "+5 élans pour votre personnage" };
             setToasts((t) => [...t, toast]);
             setTimeout(() => setToasts((t) => t.filter((x) => x.id !== toast.id)), 4000);
           }}

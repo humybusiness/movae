@@ -188,7 +188,7 @@ export function Onboarding({
                   {smartMode && <Check className="ml-auto h-4 w-4 text-[var(--m-strong)]" aria-hidden />}
                 </div>
                 <ul className="mt-2 space-y-1 text-xs text-[var(--m-ink2)]">
-                  <li>• Analyse en continu 14 signaux non sensibles : heure, rythme, sollicitation des 8 zones, vos retours…</li>
+                  <li>• Analyse en continu 16 signaux non sensibles : heure, rythme, sollicitation des 8 zones, cadence de frappe (jamais les mots), vos retours…</li>
                   <li>• Apprend vos heures réceptives et protège vos phases de concentration.</li>
                   <li>• Ajuste le rythme à votre cadence réelle (± 15 min autour de votre réglage).</li>
                   <li className="font-semibold text-[var(--m-ink)]">

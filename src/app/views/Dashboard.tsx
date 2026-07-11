@@ -2,8 +2,6 @@ import { useMemo, useState } from "react";
 import {
   BrainCircuit,
   Check,
-  ChevronDown,
-  ChevronUp,
   Clock,
   Eye,
   Flame,
@@ -17,9 +15,9 @@ import {
   Target,
 } from "lucide-react";
 import { useMovae } from "../state/store";
+import { activity } from "../engine/activity";
 import {
   engineConfidence,
-  engineSignals,
   getRecommendation,
   indexStatus,
   nextWindows,
@@ -68,7 +66,7 @@ export function Dashboard({
   const { state, dispatch } = useMovae();
   const [altIndex, setAltIndex] = useState(-1);
 
-  const rec = useMemo(() => getRecommendation(state, now), [state, now]);
+  const rec = useMemo(() => getRecommendation(state, now, activity.hint(now)), [state, now]);
   const day = todayStats(state, now);
   const index = todayIndex(state, now);
   const yIndex = yesterdayIndex(state, now);
@@ -96,9 +94,7 @@ export function Dashboard({
   const tip = tipOfDay(todayKey);
   const lvl = levelFor(state.totals.breaks);
 
-  const [signalsOpen, setSignalsOpen] = useState(false);
   const confidence = engineConfidence(state);
-  const signals = useMemo(() => engineSignals(state, now), [state, now]);
   const windows = useMemo(() => (working ? nextWindows(state, now) : []), [state, now, working]);
 
   return (
@@ -283,34 +279,11 @@ export function Dashboard({
                   </span>
                 </span>
               )}
-              <button
-                onClick={() => setSignalsOpen((s) => !s)}
-                aria-expanded={signalsOpen}
-                className="flex items-center gap-1 text-xs font-bold text-[var(--m-strong)] hover:underline"
-              >
-                {signals.length} signaux analysés
-                {signalsOpen ? <ChevronUp className="h-3.5 w-3.5" aria-hidden /> : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
-              </button>
+              <span className="text-xs text-[var(--m-ink2)]">
+                détail des signaux dans les Réglages
+              </span>
             </div>
           </div>
-          {signalsOpen && (
-            <div className="mt-4 grid gap-1.5 border-t border-[var(--m-line)] pt-4 sm:grid-cols-2">
-              {signals.map((s) => (
-                <div key={s.label} className="flex items-baseline justify-between gap-3 rounded-lg bg-[var(--m-bg2)] px-3 py-1.5 text-xs">
-                  <span className="text-[var(--m-ink2)]">
-                    {s.label}
-                    {s.learned && <span className="ml-1 text-[var(--m-accent)]" title="signal appris">●</span>}
-                  </span>
-                  <span className="text-right font-semibold">{s.value}</span>
-                </div>
-              ))}
-              <p className="text-[11px] text-[var(--m-ink2)] sm:col-span-2">
-                ● = appris de vos habitudes. Jamais de contenu de travail, de frappe, de
-                caméra ni de micro. Tout est stocké sur votre appareil et effaçable dans
-                les réglages.
-              </p>
-            </div>
-          )}
         </MCard>
       )}
 

@@ -17,6 +17,7 @@
 // Aucun capteur, aucune caméra, aucun contenu de travail analysé.
 
 import { EXERCISES, exerciseById, type Exercise } from "../data/exercises";
+import { MODE_LABELS, type ActivityHint } from "./activity";
 import { REWARDS } from "../data/rewards";
 import { dayKey, formatClock, minutesBetween, shiftDayKey } from "../../lib/time";
 import {
@@ -141,7 +142,11 @@ export interface Recommendation {
   snoozed: boolean;
 }
 
-export function getRecommendation(state: MovaeState, now: number): Recommendation {
+export function getRecommendation(
+  state: MovaeState,
+  now: number,
+  hint?: ActivityHint,
+): Recommendation {
   const { session, profile, prefs, insights } = state;
   const smart = prefs.smartMode;
   const cadence = effectiveCadence(state);
@@ -161,6 +166,14 @@ export function getRecommendation(state: MovaeState, now: number): Recommendatio
     if (receptivity >= 0.6) adjusted += 6;
     else if (receptivity <= 0.25) adjusted -= 12;
   }
+
+  // Fin de séquence de travail (rédaction, visio…) : le moment parfait pour
+  // bouger sans casser la concentration — le besoin est légèrement promu.
+  const episodeEnded = smart ? (hint?.episodeEnded ?? null) : null;
+  if (episodeEnded) adjusted += 14;
+  // Inversement, en pleine rédaction soutenue on ne dérange pas (sauf besoin fort).
+  const inFlow = smart && hint?.mode === "redaction" && !episodeEnded;
+  if (inFlow) adjusted -= 10;
 
   let level: UrgencyLevel;
   if (sinceBreakMin < cadence * 0.35 && pressure < 70) level = "fraiche";
@@ -211,6 +224,12 @@ export function getRecommendation(state: MovaeState, now: number): Recommendatio
     if (samples >= 3 && receptivity >= 0.6) reasons.push("heure où vous répondez bien");
   }
   if (profile.style === "visio" && exercise.discretion === 1) reasons.push("invisible en visio");
+  if (episodeEnded) {
+    reasons.push(
+      `fin de ${MODE_LABELS[episodeEnded.mode]} (${episodeEnded.durationMin} min) — le créneau parfait`,
+    );
+  }
+  if (inFlow) reasons.push("rédaction en cours protégée");
 
   // ----- Prochaine fenêtre idéale (estimation) -----
   let nextIdealAt: number | null = null;
@@ -476,9 +495,9 @@ export interface Signal {
   learned?: boolean; // signal issu de l'apprentissage (vs mesuré en direct)
 }
 
-export function engineSignals(state: MovaeState, now: number): Signal[] {
+export function engineSignals(state: MovaeState, now: number, hint?: ActivityHint): Signal[] {
   const d = new Date(now);
-  const rec = getRecommendation(state, now);
+  const rec = getRecommendation(state, now, hint);
   const { r, n } = hourReceptivity(state.insights, d.getHours());
   const fbCount = Object.values(state.insights.exFeedback).reduce((s, f) => s + f.up + f.down, 0);
   const tried = Object.values(state.insights.exFeedback).filter((f) => f.done > 0).length;
@@ -508,6 +527,18 @@ export function engineSignals(state: MovaeState, now: number): Signal[] {
     { label: "Pauses passées", value: `${state.totals.breaks} analysées`, learned: true },
     { label: "Discrétion requise", value: state.profile.style === "visio" ? "priorité aux exercices invisibles" : "libre" },
     { label: "Focus en cours", value: state.session.snoozedUntil && state.session.snoozedUntil > now ? "oui — silence total" : "non" },
+    {
+      label: "Cadence de frappe (comptage seul, jamais les mots)",
+      value: hint ? `${hint.kpm} frappes/min` : "en attente d'activité",
+    },
+    {
+      label: "Séquence de travail en cours",
+      value: hint
+        ? hint.episodeEnded
+          ? `fin de ${MODE_LABELS[hint.episodeEnded.mode]} détectée`
+          : MODE_LABELS[hint.mode]
+        : "en attente d'activité",
+    },
   ];
   return signals;
 }

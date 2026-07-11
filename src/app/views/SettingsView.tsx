@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Bell, Brain, Download, Eraser, RotateCcw } from "lucide-react";
+import { Bell, Brain, ChevronDown, ChevronUp, Download, Eraser, RotateCcw } from "lucide-react";
 import { exportStateAsJson, useMovae } from "../state/store";
-import { effectiveCadence, learnedSummary } from "../engine/engine";
+import { activity } from "../engine/activity";
+import { effectiveCadence, engineSignals, learnedSummary } from "../engine/engine";
 import { themeUnlocked } from "../data/rewards";
 import { THEMES } from "../data/themes";
 import { MButton, MCard, SectionTitle, Toggle } from "../components/ui";
@@ -17,7 +18,9 @@ export function SettingsView() {
   const { state, dispatch } = useMovae();
   const [confirmReset, setConfirmReset] = useState(false);
   const [notifTested, setNotifTested] = useState(false);
+  const [signalsOpen, setSignalsOpen] = useState(false);
   const permission = notificationPermission();
+  const signals = signalsOpen ? engineSignals(state, Date.now(), activity.hint(Date.now())) : [];
 
   return (
     <div className="max-w-3xl">
@@ -97,9 +100,10 @@ export function SettingsView() {
           <div>
             <p className="text-sm font-semibold">IA adaptative</p>
             <p className="mt-0.5 text-xs text-[var(--m-ink2)]">
-              Analyse en continu 14 signaux non sensibles (heure, rythme, zones
-              sollicitées, vos retours…) pour proposer la bonne pause au bon moment.
-              Désactivée = rappels à cadence fixe, aucun apprentissage.
+              Analyse en continu 16 signaux non sensibles (heure, rythme, zones
+              sollicitées, cadence de frappe — jamais les mots —, vos retours…)
+              pour proposer la bonne pause au bon moment. Désactivée = rappels
+              à cadence fixe, aucun apprentissage.
             </p>
           </div>
           <Toggle
@@ -148,6 +152,47 @@ export function SettingsView() {
               <Eraser className="h-3.5 w-3.5" aria-hidden />
               Effacer les apprentissages
             </MButton>
+          </div>
+        )}
+        {state.prefs.smartMode && (
+          <div className="mt-4">
+            <button
+              onClick={() => setSignalsOpen((s) => !s)}
+              aria-expanded={signalsOpen}
+              className="flex items-center gap-1 text-xs font-bold text-[var(--m-strong)] hover:underline"
+            >
+              Voir les 16 signaux analysés
+              {signalsOpen ? (
+                <ChevronUp className="h-3.5 w-3.5" aria-hidden />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+              )}
+            </button>
+            {signalsOpen && (
+              <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+                {signals.map((s) => (
+                  <div
+                    key={s.label}
+                    className="flex items-baseline justify-between gap-3 rounded-lg bg-[var(--m-bg2)] px-3 py-1.5 text-xs"
+                  >
+                    <span className="text-[var(--m-ink2)]">
+                      {s.label}
+                      {s.learned && (
+                        <span className="ml-1 text-[var(--m-accent)]" title="signal appris">
+                          ●
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-right font-semibold">{s.value}</span>
+                  </div>
+                ))}
+                <p className="text-[11px] text-[var(--m-ink2)] sm:col-span-2">
+                  ● = appris de vos habitudes. La frappe est comptée, jamais lue :
+                  aucun mot, aucune touche identifiée. Jamais de caméra ni de micro.
+                  Tout est stocké sur votre appareil et effaçable ci-dessus.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </MCard>
