@@ -20,8 +20,17 @@ import {
 import { useAuth } from "../auth/AuthProvider";
 import { db } from "../../lib/firebase";
 import { dayKey } from "../../lib/time";
-import { accessoryById, CLAY_PER_BREAK, CLAY_PER_PROGRAM } from "../data/accessories";
-import type { AvatarBody, AvatarState, IndexStyleId, MovaeState, ThemeId, WorkStyle } from "../types";
+import { accessoryById, isAdditiveSlot, CLAY_PER_BREAK, CLAY_PER_PROGRAM } from "../data/accessories";
+import {
+  DEFAULT_AVATAR_COLORS,
+  type AvatarColors,
+  type AvatarState,
+  type HairId,
+  type IndexStyleId,
+  type MovaeState,
+  type ThemeId,
+  type WorkStyle,
+} from "../types";
 
 const STORAGE_KEY = "movae:v1";
 
@@ -51,7 +60,13 @@ export function defaultState(): MovaeState {
       lastNotifyAt: null,
       snoozedUntil: null,
     },
-    avatar: { body: "m", clay: 0, owned: [], equipped: [] },
+    avatar: {
+      hair: "court",
+      colors: { ...DEFAULT_AVATAR_COLORS },
+      clay: 0,
+      owned: [],
+      equipped: [],
+    },
     strain: emptyStrain(),
     insights: emptyInsights(),
     history: [],
@@ -71,7 +86,15 @@ function hydrateState(parsed: Partial<MovaeState>): MovaeState {
     profile: { ...base.profile, ...parsed.profile },
     prefs: { ...base.prefs, ...parsed.prefs },
     session: { ...base.session, ...parsed.session },
-    avatar: { ...base.avatar, ...parsed.avatar },
+    avatar: {
+      ...base.avatar,
+      ...parsed.avatar,
+      // migration depuis l'ancien choix féminin/masculin
+      hair:
+        parsed.avatar?.hair ??
+        ((parsed.avatar as { body?: string } | undefined)?.body === "f" ? "chignon" : base.avatar.hair),
+      colors: { ...base.avatar.colors, ...parsed.avatar?.colors },
+    },
     strain: { ...base.strain, ...parsed.strain },
     insights: {
       ...base.insights,
@@ -137,7 +160,8 @@ export type Action =
   | { type: "notified"; now: number }
   | { type: "exercise-feedback"; exerciseId: string; up: boolean }
   | { type: "program-done" }
-  | { type: "avatar-body"; body: AvatarBody }
+  | { type: "avatar-hair"; hair: HairId }
+  | { type: "avatar-color"; part: keyof AvatarColors; color: string }
   | { type: "avatar-buy"; id: string }
   | { type: "avatar-toggle"; id: string }
   | { type: "clear-insights" }
@@ -215,13 +239,24 @@ function reducer(state: MovaeState, action: Action): MovaeState {
       const next = applyProgramDone(state);
       return { ...next, avatar: { ...next.avatar, clay: next.avatar.clay + CLAY_PER_PROGRAM } };
     }
-    case "avatar-body":
-      return { ...state, avatar: { ...state.avatar, body: action.body } };
+    case "avatar-hair":
+      return { ...state, avatar: { ...state.avatar, hair: action.hair } };
+    case "avatar-color":
+      return {
+        ...state,
+        avatar: {
+          ...state.avatar,
+          colors: { ...state.avatar.colors, [action.part]: action.color },
+        },
+      };
     case "avatar-buy": {
       const acc = accessoryById(action.id);
       if (!acc || state.avatar.owned.includes(acc.id) || state.avatar.clay < acc.price) return state;
-      // Achat = équipé directement (remplace l'accessoire du même emplacement).
-      const equipped = state.avatar.equipped.filter((id) => accessoryById(id)?.slot !== acc.slot);
+      // Achat = équipé/installé directement. Le jardin et les animaux se
+      // cumulent ; les emplacements portés (tête, visage...) se remplacent.
+      const equipped = isAdditiveSlot(acc.slot)
+        ? state.avatar.equipped
+        : state.avatar.equipped.filter((id) => accessoryById(id)?.slot !== acc.slot);
       return {
         ...state,
         avatar: {
@@ -241,7 +276,9 @@ function reducer(state: MovaeState, action: Action): MovaeState {
           avatar: { ...state.avatar, equipped: state.avatar.equipped.filter((id) => id !== acc.id) },
         };
       }
-      const equipped = state.avatar.equipped.filter((id) => accessoryById(id)?.slot !== acc.slot);
+      const equipped = isAdditiveSlot(acc.slot)
+        ? state.avatar.equipped
+        : state.avatar.equipped.filter((id) => accessoryById(id)?.slot !== acc.slot);
       return { ...state, avatar: { ...state.avatar, equipped: [...equipped, acc.id] } };
     }
     case "clear-insights":

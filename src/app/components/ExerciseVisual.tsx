@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { ExerciseFigure } from "./ExerciseFigure";
 import { zoneSnapshot } from "./zoneSnapshots";
+import { avatarConfig } from "./ExerciseFigure3D";
 import { defaultAvatar, useMovaeMaybe } from "../state/store";
 import { MOTIONS, type MotionId } from "../data/motions";
 
@@ -20,15 +21,16 @@ export function ExerciseVisual({
 }) {
   const zone = MOTIONS[motion].highlight;
   const store = useMovaeMaybe();
-  const body = (store?.state.avatar ?? defaultAvatar()).body;
+  const config = avatarConfig(store?.state.avatar ?? defaultAvatar());
 
   const src = useMemo(() => {
     try {
-      return zoneSnapshot(zone, body);
+      return zoneSnapshot(zone, config);
     } catch {
       return null; // WebGL indisponible : repli sur la figure vectorielle
     }
-  }, [zone, body]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zone, config.hair, config.colors.skin, config.colors.hair, config.colors.top, config.colors.trousers, config.colors.shoes]);
 
   if (!src) return <ExerciseFigure motion={motion} size={size} />;
 

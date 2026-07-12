@@ -5,24 +5,31 @@ import {
   applyPose,
   ClayLights,
   ClayRig,
-  ClayStage,
+  GardenStage,
   easeInOut,
   lerpPose,
   motionFrames3D,
   pelvisBaseY,
   rad,
   restPose,
+  swayHair,
   useRigRefs,
   CLAY,
 } from "./ClayCharacter";
-import { buildHand, disposeObject, type HandJoints } from "./clayParts";
+import { buildLooseHand, disposeObject, poseHand, type AvatarConfig } from "./clayParts";
+import { gardenItemIds } from "./gardenParts";
 import { defaultAvatar, useMovaeMaybe } from "../state/store";
 import { MOTIONS, type FaceKind, type HandsKind, type Motion, type MotionId } from "../data/motions";
+import type { AvatarState } from "../types";
 
 // Figure d'exercice 3D : le personnage argile rejoue le mouvement de
 // l'exercice, filmé sous son meilleur angle — profil pour les mouvements
 // sagittaux, face pour les latéraux/rotations, gros plan visage pour les
 // exercices d'yeux (pupilles animées), gros plan main pour les poignets.
+
+export function avatarConfig(avatar: AvatarState): AvatarConfig {
+  return { hair: avatar.hair, colors: avatar.colors, equipped: avatar.equipped };
+}
 
 // ---------- Cadrage par vue ----------
 
@@ -31,8 +38,6 @@ const VIEW_YAW: Record<"side" | "front", number> = {
   front: rad(-6),
 };
 
-// Quelques exercices gagnent à être cadrés plus strictement de profil
-// (rétraction du menton, dos rond/creux...) ou en 3/4 plus ouvert.
 const YAW_OVERRIDES: Partial<Record<MotionId, number>> = {
   "chin-tuck": rad(86),
   "neck-yes": rad(82),
@@ -58,14 +63,12 @@ function ExerciseScene({
   motionId,
   motion,
   animate,
-  body,
-  equipped,
+  config,
 }: {
   motionId: MotionId;
   motion: Motion;
   animate: boolean;
-  body: "f" | "m";
-  equipped: string[];
+  config: AvatarConfig;
 }) {
   const stand = motion.view === "side" && Boolean(motion.stand);
   const frames = useMemo(() => motionFrames3D(motion), [motion]);
@@ -81,7 +84,6 @@ function ExerciseScene({
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
 
-    // Micro-vie : léger balancement + respiration + clignements.
     let sway = 0;
     let blink = 1;
     if (!reduced.current) {
@@ -97,28 +99,30 @@ function ExerciseScene({
       const phase = (t % cycle) / cycle;
       let k = phase * 2;
       k = k < 1 ? k : 2 - k;
-      if (motion.hold) k = Math.min(1, k * 1.6); // plateau : étirement tenu
+      if (motion.hold) k = Math.min(1, k * 1.6);
       const eased = easeInOut(k);
       const seg = eased * (frames.length - 1);
       const i = Math.min(frames.length - 2, Math.floor(seg));
       pose = lerpPose(frames[i], frames[i + 1], seg - i);
     } else if (!animate && !reduced.current) {
-      // pose finale + respiration discrète
       pose = { ...pose, belly: Math.max(pose.belly, 0.12 + Math.sin(t * 1.4) * 0.1) };
     }
     applyPose(refs, pose, baseY, blink);
+    if (!reduced.current) swayHair(refs, t);
   });
 
   const desk = motion.view === "side" && Boolean(motion.desk);
   const target = motion.view === "side" && Boolean(motion.target);
+  // Dans le lecteur d'exercice, on épure : pas d'objets de jardin, seulement
+  // le tabouret/bureau — le personnage reste le sujet.
+  const stageEquipped = useMemo(() => config.equipped.filter((id) => gardenItemIds([id]).length === 0), [config.equipped]);
 
   return (
     <group position={[0, -0.82, 0]}>
       <ClayLights />
       <group ref={rig} rotation={[0, yaw, 0]}>
-        <ClayRig refs={refs} avatar={{ body, equipped }} />
-        <ClayStage seated={!stand} desk={desk} equipped={equipped} />
-        {/* cible visuelle des exercices de regard */}
+        <ClayRig refs={refs} config={config} />
+        <GardenStage equipped={stageEquipped} seated={!stand} desk={desk} />
         {target && (
           <mesh position={[0, 1.55, 1.15]}>
             <sphereGeometry args={[0.05, 12, 10]} />
@@ -135,13 +139,11 @@ function ExerciseScene({
 function FaceScene({
   kind,
   animate,
-  body,
-  equipped,
+  config,
 }: {
   kind: FaceKind;
   animate: boolean;
-  body: "f" | "m";
-  equipped: string[];
+  config: AvatarConfig;
 }) {
   const refs = useRigRefs();
   const rest = useMemo(() => restPose(false), []);
@@ -153,7 +155,7 @@ function FaceScene({
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
     const run = animate && !reduced.current;
-    const a = t * ((2 * Math.PI) / 4); // un tour de cycle ≈ 4 s
+    const a = t * ((2 * Math.PI) / 4);
 
     let gazeX = 0;
     let gazeY = 0;
@@ -176,7 +178,6 @@ function FaceScene({
       blink = 0;
     } else if (kind === "palming") {
       blink = 0;
-      // mains en coque devant les yeux
       armL = { fwd: 142, abd: 10, elbowFwd: 128, elbowAbd: 6 };
       armR = { fwd: 142, abd: 10, elbowFwd: 128, elbowAbd: 6 };
     }
@@ -189,19 +190,19 @@ function FaceScene({
       gazeY,
       belly: 0.15 + (reduced.current ? 0 : Math.sin(t * 1.2) * 0.12),
     };
-    // clignement naturel par-dessus, sauf yeux fermés volontairement
     if (blink === 1 && !reduced.current) {
       const b = (t + 1.7) % 4.1;
       if (b < 0.12) blink = 0.1;
     }
     applyPose(refs, pose, baseY, blink);
+    if (!reduced.current) swayHair(refs, t);
   });
 
   return (
-    <group position={[0, -1.34, 0]}>
+    <group position={[0, -1.38, 0]}>
       <ClayLights />
       <group rotation={[0, rad(-4), 0]}>
-        <ClayRig refs={refs} avatar={{ body, equipped }} />
+        <ClayRig refs={refs} config={config} />
       </group>
     </group>
   );
@@ -209,15 +210,7 @@ function FaceScene({
 
 // ---------- Scène mains (poignets/doigts : vraie main à doigts) ----------
 
-function setHandCurl(hand: HandJoints, curl: number, spread = 0) {
-  for (let i = 0; i < hand.fingers.length; i++) {
-    hand.fingers[i].rotation.x = 0.12 + curl * 1.25;
-    hand.fingers[i].rotation.z = spread * (i - 1.5) * 0.17;
-  }
-  for (const tip of hand.tips) tip.rotation.x = 0.22 + curl * 1.15;
-}
-
-function HandsScene({ kind, animate }: { kind: HandsKind; animate: boolean }) {
+function HandsScene({ kind, animate, skin }: { kind: HandsKind; animate: boolean; skin: string }) {
   const reduced = useRef(
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
@@ -225,15 +218,19 @@ function HandsScene({ kind, animate }: { kind: HandsKind; animate: boolean }) {
   const massage = kind === "forearm-massage";
 
   const built = useMemo(() => {
-    const main = buildHand(1);
-    const other = two || massage ? buildHand(-1) : null;
+    const main = buildLooseHand(1, skin);
+    const other = two || massage ? buildLooseHand(-1, skin) : null;
     return { main, other };
-  }, [two, massage]);
+  }, [two, massage, skin]);
 
   useEffect(() => {
     return () => {
       disposeObject(built.main.root);
-      if (built.other) disposeObject(built.other.root);
+      built.main.ms.dispose();
+      if (built.other) {
+        disposeObject(built.other.root);
+        built.other.ms.dispose();
+      }
     };
   }, [built]);
 
@@ -248,72 +245,67 @@ function HandsScene({ kind, animate }: { kind: HandsKind; animate: boolean }) {
     let k = phase * 2;
     k = k < 1 ? k : 2 - k;
     const eased = easeInOut(k);
-    const w = built.main.joints;
+    const hand = built.main.joints;
     const holder = wristHolder.current;
     if (!holder) return;
 
-    // orientation de présentation : poignet au centre, doigts vers le haut
     holder.rotation.set(Math.PI, 0, 0);
     holder.position.set(0, -0.05, 0);
-    setHandCurl(w, 0.08);
-    w.thumb.rotation.set(0.5, 0, 0.7);
+    poseHand(hand, 0.06);
 
     switch (kind) {
       case "wrist-flex":
-        w.wrist.rotation.set(0.15 + eased * 0.85, 0, 0);
+        hand.wrist.rotation.set(0.15 + eased * 0.85, 0, 0);
         break;
       case "wrist-ext":
-        w.wrist.rotation.set(-(0.15 + eased * 0.85), 0, 0);
+        hand.wrist.rotation.set(-(0.15 + eased * 0.85), 0, 0);
         break;
       case "wrist-circles": {
         const a = (run ? t : 1) * 2.2;
-        w.wrist.rotation.set(Math.sin(a) * 0.7, 0, Math.cos(a) * 0.45);
+        hand.wrist.rotation.set(Math.sin(a) * 0.7, 0, Math.cos(a) * 0.45);
         break;
       }
       case "shake":
-        w.wrist.rotation.set(0, 0, run ? Math.sin(t * 22) * 0.28 : 0.2);
-        setHandCurl(w, 0.05);
+        hand.wrist.rotation.set(0, 0, run ? Math.sin(t * 22) * 0.28 : 0.2);
+        poseHand(hand, 0.03);
         break;
       case "flip":
-        w.wrist.rotation.set(0, eased * Math.PI, 0);
+        hand.wrist.rotation.set(0, eased * Math.PI, 0);
         break;
       case "fist":
-        w.wrist.rotation.set(0, 0, 0);
-        setHandCurl(w, eased);
-        w.thumb.rotation.set(0.5 + eased * 0.6, 0, 0.7 - eased * 0.3);
+        hand.wrist.rotation.set(0, 0, 0);
+        poseHand(hand, eased);
         break;
       case "finger-fan":
-        w.wrist.rotation.set(0, 0, 0);
-        setHandCurl(w, 0.02, eased);
-        w.thumb.rotation.set(0.5, 0, 0.7 + eased * 0.35);
+        hand.wrist.rotation.set(0, 0, 0);
+        poseHand(hand, 0.02, eased);
+        hand.thumb.p1.rotation.z = 0.75 + eased * 0.35;
         break;
       case "thumb":
-        w.wrist.rotation.set(0, 0, 0);
-        w.thumb.rotation.set(0.5 + Math.sin((run ? t : 1) * 3) * 0.4, 0, 0.7);
+        hand.wrist.rotation.set(0, 0, 0);
+        hand.thumb.p1.rotation.x = 0.45 + Math.sin((run ? t : 1) * 3) * 0.4;
         break;
       case "prayer":
       case "prayer-inv": {
         const dir = kind === "prayer" ? 1 : -1;
         holder.rotation.set(Math.PI, 0, 0.12);
         holder.position.set(0.09, -0.02 + dir * eased * 0.09, 0);
-        setHandCurl(w, 0.02);
-        const o = built.other!.joints;
-        if (otherHolder.current) {
+        poseHand(hand, 0.02);
+        if (otherHolder.current && built.other) {
           otherHolder.current.rotation.set(Math.PI, 0, -0.12);
           otherHolder.current.position.set(-0.09, -0.02 + dir * eased * 0.09, 0);
+          poseHand(built.other.joints, 0.02);
         }
-        setHandCurl(o, 0.02);
         break;
       }
       case "forearm-massage": {
-        // avant-bras horizontal + pouce de l'autre main qui glisse
         holder.rotation.set(Math.PI, 0, Math.PI / 2 - 0.25);
         holder.position.set(0.28, -0.12, 0);
-        if (otherHolder.current) {
+        if (otherHolder.current && built.other) {
           otherHolder.current.rotation.set(-1.2, 0, 0);
           otherHolder.current.position.set(0.05 - eased * 0.3, 0.02, 0.06);
+          poseHand(built.other.joints, 0.35);
         }
-        setHandCurl(built.other!.joints, 0.35);
         break;
       }
     }
@@ -323,15 +315,14 @@ function HandsScene({ kind, animate }: { kind: HandsKind; animate: boolean }) {
     <group>
       <ClayLights />
       <group scale={2.6} position={[0, -0.12, 0]}>
-        {/* poignet / avant-bras */}
+        {/* avant-bras */}
         <mesh position={[0, -0.28, 0]} castShadow>
           <capsuleGeometry args={[0.055, 0.3, 8, 20]} />
-          {/* manche */}
-          <meshStandardMaterial color={CLAY.skin} roughness={0.94} metalness={0} />
+          <meshStandardMaterial color={skin} roughness={0.94} metalness={0} />
         </mesh>
         <mesh position={[0, -0.42, 0]}>
           <torusGeometry args={[0.062, 0.018, 10, 22]} />
-          <meshStandardMaterial color={CLAY.topDark} roughness={0.94} metalness={0} />
+          <meshStandardMaterial color={CLAY.accent} roughness={0.94} metalness={0} />
         </mesh>
         <group ref={wristHolder}>
           <primitive object={built.main.root} />
@@ -368,7 +359,7 @@ export function ExerciseFigure3D({
 }) {
   const motion = MOTIONS[motionId] as Motion;
   const store = useMovaeMaybe();
-  const avatar = store?.state.avatar ?? defaultAvatar();
+  const config = avatarConfig(store?.state.avatar ?? defaultAvatar());
   const cam = VIEW_CAMERA[motion.view];
 
   return (
@@ -389,17 +380,11 @@ export function ExerciseFigure3D({
         style={{ width: size, height: size, display: "block" }}
       >
         {motion.view === "face" ? (
-          <FaceScene kind={motion.kind} animate={animate} body={avatar.body} equipped={avatar.equipped} />
+          <FaceScene kind={motion.kind} animate={animate} config={config} />
         ) : motion.view === "hands" ? (
-          <HandsScene kind={motion.kind} animate={animate} />
+          <HandsScene kind={motion.kind} animate={animate} skin={config.colors.skin} />
         ) : (
-          <ExerciseScene
-            motionId={motionId}
-            motion={motion}
-            animate={animate}
-            body={avatar.body}
-            equipped={avatar.equipped}
-          />
+          <ExerciseScene motionId={motionId} motion={motion} animate={animate} config={config} />
         )}
       </Canvas>
     </div>
@@ -407,16 +392,17 @@ export function ExerciseFigure3D({
 }
 
 // Aperçu « portrait » pour le menu Personnage : pose de repos, respiration,
-// rotation lente pour admirer les accessoires sous tous les angles.
+// rotation lente — la caméra recule quand le jardin grandit.
 export function CharacterStage({
-  body,
-  equipped,
+  config,
   size = 280,
 }: {
-  body: "f" | "m";
-  equipped: string[];
+  config: AvatarConfig;
   size?: number;
 }) {
+  const gardenCount = gardenItemIds(config.equipped).length;
+  const camZ = gardenCount >= 3 ? 4.9 : gardenCount >= 1 ? 4.1 : 3.4;
+
   return (
     <div
       style={{
@@ -429,17 +415,17 @@ export function CharacterStage({
     >
       <Canvas
         gl={{ alpha: true, antialias: true }}
-        camera={{ position: [0, 0.18, 3.4], fov: 30 }}
+        camera={{ position: [0, 0.35, camZ], fov: 30 }}
         dpr={[1, 2]}
         style={{ width: size, height: size, display: "block" }}
       >
-        <PortraitScene body={body} equipped={equipped} />
+        <PortraitScene config={config} />
       </Canvas>
     </div>
   );
 }
 
-function PortraitScene({ body, equipped }: { body: "f" | "m"; equipped: string[] }) {
+function PortraitScene({ config }: { config: AvatarConfig }) {
   const refs = useRigRefs();
   const rig = useRef<THREE.Group>(null);
   const reduced = useRef(
@@ -463,14 +449,15 @@ function PortraitScene({ body, equipped }: { body: "f" | "m"; equipped: string[]
       gazeX: Math.sin(t * 0.35) * 0.25,
     };
     applyPose(refs, pose, baseY, blink);
+    if (!reduced.current) swayHair(refs, t);
   });
 
   return (
     <group position={[0, -0.82, 0]}>
       <ClayLights />
       <group ref={rig}>
-        <ClayRig refs={refs} avatar={{ body, equipped }} />
-        <ClayStage seated equipped={equipped} />
+        <ClayRig refs={refs} config={config} />
+        <GardenStage equipped={config.equipped} seated />
       </group>
     </group>
   );

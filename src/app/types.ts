@@ -58,13 +58,40 @@ export type ThemeId = "sauge" | "nuit-calme" | "sable" | "foret" | "aube" | "oce
 
 // ---------- Personnage argile ----------
 
-export type AvatarBody = "f" | "m";
+export type HairId = "court" | "mi-long" | "chignon" | "queue" | "boucles" | "ras";
+
+export const HAIR_LABELS: Record<HairId, string> = {
+  court: "Court",
+  "mi-long": "Mi-long",
+  chignon: "Chignon",
+  queue: "Queue de cheval",
+  boucles: "Bouclé",
+  ras: "Très court",
+};
+
+// Chaque élément du personnage est colorable librement par l'utilisateur.
+export interface AvatarColors {
+  skin: string;
+  hair: string;
+  top: string;
+  trousers: string;
+  shoes: string;
+}
+
+export const DEFAULT_AVATAR_COLORS: AvatarColors = {
+  skin: "#F0DCC3",
+  hair: "#4A3F35",
+  top: "#8FAE97",
+  trousers: "#6F665C",
+  shoes: "#4C443B",
+};
 
 export interface AvatarState {
-  body: AvatarBody;
-  clay: number; // boulettes d'argile (monnaie gagnée avec les pauses)
-  owned: string[]; // accessoires achetés
-  equipped: string[]; // accessoires portés (un par emplacement)
+  hair: HairId;
+  colors: AvatarColors;
+  clay: number; // élans (monnaie gagnée avec les pauses)
+  owned: string[]; // accessoires/jardin achetés
+  equipped: string[]; // portés/installés (jardin et animaux cumulables)
 }
 export type IndexStyleId = "anneau" | "score" | "barres";
 export type SessionStatus = "off" | "working" | "away";

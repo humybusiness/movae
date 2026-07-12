@@ -1,16 +1,25 @@
 import { useEffect, useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { buildCharacter, disposeObject, type CharacterJoints } from "./clayParts";
-import type { AvatarState } from "../types";
+import {
+  buildCharacter,
+  disposeObject,
+  poseHand,
+  type AvatarConfig,
+  type CharacterJoints,
+} from "./clayParts";
+import { animateGarden, buildGarden } from "./gardenParts";
+import { MatSet } from "./clayParts";
 import type { FrontPose, Motion, SidePose } from "../data/motions";
 
 // ============================================================================
-// Personnage Movaé en argile — rig 3D partagé.
+// Personnage Movaé v3 — cinématique.
 //
-// La géométrie détaillée (doigts, chaussures, pupilles, mèches...) vit dans
-// clayParts.ts ; ici on garde la cinématique : conversion des poses de
-// motions.ts vers le squelette 3D et application impérative à 60 fps.
-// Un seul personnage sert les 100 exercices et porte les accessoires gagnés.
+// La géométrie (squelette ~90 articulations, doigts 3 phalanges, pupilles,
+// jardin...) vit dans clayParts.ts / gardenParts.ts ; ici on convertit les
+// poses de motions.ts vers le squelette et on les applique à 60 fps :
+// flexion répartie sur les 3 segments de colonne, cou en 2 segments,
+// clavicules pour le haussement d'épaules, doigts, regard, respiration.
 // ============================================================================
 
 export { CLAY } from "./clayParts";
@@ -22,40 +31,40 @@ export const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) 
 // ---------- Pose 3D normalisée ----------
 
 export interface Arm3D {
-  fwd: number; // élévation sagittale (0 = bras le long, + = vers l'avant/haut)
-  abd: number; // abduction frontale (+ = s'écarte du corps)
-  elbowFwd: number; // flexion du coude dans le plan sagittal
-  elbowAbd: number; // flexion du coude dans le plan frontal
+  fwd: number;
+  abd: number;
+  elbowFwd: number;
+  elbowAbd: number;
 }
 
 export interface Leg3D {
-  thigh: number; // depuis l'horizontale, + = genou levé (assis : 0)
-  shin: number; // tibia depuis la verticale, + = pied vers l'avant
-  foot: number; // + = pointe levée
-  open: number; // ouverture latérale du genou
+  thigh: number;
+  shin: number;
+  foot: number;
+  open: number;
 }
 
 export interface Pose3D {
   posX: number;
   posY: number;
-  torsoTilt: number; // + = penché en avant
-  torsoBend: number; // + = incliné vers sa gauche (écran droite en vue de face)
+  torsoTilt: number;
+  torsoBend: number;
   torsoTwist: number;
   headTilt: number;
   headBend: number;
   headTwist: number;
-  headOut: number; // translation avant/arrière (rétraction du menton)
-  shrug: number; // 0..1 élévation des épaules
-  shoulderZ: number; // avancée/recul des épaules (roulements)
+  headOut: number;
+  shrug: number;
+  shoulderZ: number;
   armL: Arm3D;
   armR: Arm3D;
   legL: Leg3D;
   legR: Leg3D;
-  belly: number; // 0..1 respiration ventrale
-  grow: number; // 0..1 auto-grandissement
-  gazeX: number; // -1..1 regard (pupilles)
-  gazeY: number; // -1..1
-  fist: number; // 0..1 fermeture des mains (0 = détendue)
+  belly: number;
+  grow: number;
+  gazeX: number;
+  gazeY: number;
+  fist: number;
 }
 
 const REST_ARM_SEATED: Arm3D = { fwd: 34, abd: 4, elbowFwd: 58, elbowAbd: 0 };
@@ -88,9 +97,8 @@ export function restPose(stand: boolean): Pose3D {
   };
 }
 
-// ---------- Conversion des poses motions.ts → Pose3D ----------
-// Vue de profil : le personnage montre son côté gauche à la caméra,
-// donc membre « proche » (near) = côté gauche, « éloigné » (far) = droit.
+// ---------- Conversion motions.ts → Pose3D ----------
+// Vue de profil : membre « proche » = côté gauche (montré à la caméra).
 
 function sideArm(a: { sh: number; el: number } | null | undefined, fallback: Arm3D): Arm3D {
   if (a === null || a === undefined) return fallback;
@@ -99,18 +107,6 @@ function sideArm(a: { sh: number; el: number } | null | undefined, fallback: Arm
 
 export function sideFrameTo3D(p: SidePose, stand: boolean): Pose3D {
   const base = restPose(stand);
-  const legL: Leg3D = {
-    thigh: p.thigh ?? base.legL.thigh,
-    shin: p.shin ?? base.legL.shin,
-    foot: p.foot ?? base.legL.foot,
-    open: base.legL.open,
-  };
-  const legR: Leg3D = {
-    thigh: p.thighFar ?? base.legR.thigh,
-    shin: p.shinFar ?? base.legR.shin,
-    foot: p.footFar ?? base.legR.foot,
-    open: base.legR.open,
-  };
   return {
     ...base,
     posY: -(p.pelvisY ?? 0) * 0.012,
@@ -121,16 +117,23 @@ export function sideFrameTo3D(p: SidePose, stand: boolean): Pose3D {
     shoulderZ: (p.shoulderShift ?? 0) * 0.012,
     armL: sideArm(p.armNear, base.armL),
     armR: sideArm(p.armFar, base.armR),
-    legL,
-    legR,
+    legL: {
+      thigh: p.thigh ?? base.legL.thigh,
+      shin: p.shin ?? base.legL.shin,
+      foot: p.foot ?? base.legL.foot,
+      open: base.legL.open,
+    },
+    legR: {
+      thigh: p.thighFar ?? base.legR.thigh,
+      shin: p.shinFar ?? base.legR.shin,
+      foot: p.footFar ?? base.legR.foot,
+      open: base.legR.open,
+    },
     belly: p.belly ?? 0,
-    // regard : suit la cible (exercices d'yeux au loin)
     gazeY: p.gaze !== undefined ? lerp(-0.3, 0.25, p.gaze) : 0,
   };
 }
 
-// Vue de face : dans motions.ts, armL est dessiné à gauche de l'écran, soit le
-// bras situé côté -X monde (caméra par défaut). sh y mesure l'écartement.
 function frontArm(a: { sh: number; el: number } | null | undefined, shrug: number): Arm3D {
   if (a === null || a === undefined) {
     return { ...REST_ARM_SEATED, fwd: REST_ARM_SEATED.fwd - shrug * 10 };
@@ -226,73 +229,110 @@ export function useRigRefs(): RigRefs {
 
 // ---------- Application d'une pose (impératif, 60 fps) ----------
 
-const SHOULDER_Y = 0.5;
-
 function applyArm(
   sh: THREE.Group,
   el: THREE.Group,
+  clav: THREE.Group,
   arm: Arm3D,
   side: 1 | -1,
   shrug: number,
   shoulderZ: number,
 ) {
   sh.rotation.set(rad(-arm.fwd), 0, rad(arm.abd) * side);
-  sh.position.set(0.27 * side, SHOULDER_Y + shrug * 0.05, shoulderZ);
   el.rotation.set(rad(-arm.elbowFwd), 0, rad(arm.elbowAbd) * side);
+  clav.position.y = 0.24 + shrug * 0.05;
+  clav.position.z = shoulderZ;
+  clav.rotation.z = shrug * 0.12 * -side;
 }
 
-function applyLeg(hip: THREE.Group, knee: THREE.Group, ank: THREE.Group, leg: Leg3D, side: 1 | -1) {
+function applyLeg(
+  hip: THREE.Group,
+  knee: THREE.Group,
+  ank: THREE.Group,
+  toe: THREE.Group,
+  leg: Leg3D,
+  side: 1 | -1,
+) {
   hip.rotation.set(-rad(leg.thigh + 90), 0, rad(leg.open) * side);
   knee.rotation.set(rad(90 + leg.thigh - leg.shin), 0, 0);
   ank.rotation.set(rad(leg.shin) - rad(leg.foot), 0, 0);
+  // les orteils accompagnent légèrement la pointe de pied
+  toe.rotation.x = Math.max(0, -rad(leg.foot)) * 0.4;
 }
 
-// Doigts : flexion douce (repos ≈ 0.12 rad, poing ≈ 1.35 rad).
-function applyHand(hand: CharacterJoints["handL"], fist: number) {
-  const base = 0.12 + fist * 1.25;
-  const tip = 0.22 + fist * 1.15;
-  for (const f of hand.fingers) f.rotation.x = base;
-  for (const t of hand.tips) t.rotation.x = tip;
-}
-
-// blink : 1 = yeux ouverts, 0 = fermés (paupières descendues).
+// blink : 1 = yeux ouverts, 0 = fermés.
 export function applyPose(refs: RigRefs, pose: Pose3D, pelvisBaseY: number, blink = 1) {
   const j = refs.joints.current;
   if (!j) return;
+
   j.pelvis.position.set(pose.posX, pelvisBaseY + pose.posY + pose.grow * 0.05, 0);
-  j.torso.rotation.set(rad(pose.torsoTilt), rad(pose.torsoTwist), rad(-pose.torsoBend));
-  j.torso.scale.setY(1 + pose.grow * 0.04);
-  j.head.rotation.set(rad(pose.headTilt), rad(pose.headTwist), rad(-pose.headBend));
-  j.head.position.set(0, 0.72 - pose.shrug * 0.03, pose.headOut * 0.006);
-  // paupières : ouvertes = relevées (-1.35), fermées = baissées (-0.25)
+
+  // colonne : flexion/torsion répartie sur 3 segments (souplesse d'argile)
+  const tilt = rad(pose.torsoTilt);
+  const twist = rad(pose.torsoTwist);
+  const bend = rad(-pose.torsoBend);
+  j.spine1.rotation.set(tilt * 0.45, twist * 0.3, bend * 0.4);
+  j.spine2.rotation.set(tilt * 0.35, twist * 0.35, bend * 0.35);
+  j.chest.rotation.set(tilt * 0.2, twist * 0.35, bend * 0.25);
+  j.spine1.scale.setY(1 + pose.grow * 0.04);
+
+  // cou en 2 segments + tête
+  const hTilt = rad(pose.headTilt);
+  const hTwist = rad(pose.headTwist);
+  const hBend = rad(-pose.headBend);
+  j.neck1.rotation.set(hTilt * 0.25, hTwist * 0.25, hBend * 0.2);
+  j.neck2.rotation.set(hTilt * 0.25, hTwist * 0.25, hBend * 0.25);
+  j.head.rotation.set(hTilt * 0.5, hTwist * 0.5, hBend * 0.55);
+  j.neck1.position.z = pose.headOut * 0.005;
+  j.head.position.z = pose.headOut * 0.003;
+
+  // paupières (hautes + basses)
   const lidRot = lerp(-0.25, -1.35, Math.max(0, Math.min(1, blink)));
   j.lidL.rotation.x = lidRot;
   j.lidR.rotation.x = lidRot;
+  j.lidLowL.rotation.x = lerp(-0.9, -1.45, Math.max(0, Math.min(1, blink)));
+  j.lidLowR.rotation.x = lerp(-0.9, -1.45, Math.max(0, Math.min(1, blink)));
+
   // regard
   j.pupilL.position.set(pose.gazeX * 0.02, pose.gazeY * 0.017, 0);
   j.pupilR.position.set(pose.gazeX * 0.02, pose.gazeY * 0.017, 0);
-  const s = 1 + pose.belly * 0.3;
-  j.belly.scale.set(s, s, s);
-  applyArm(j.shL, j.elL, pose.armL, -1, pose.shrug, pose.shoulderZ);
-  applyArm(j.shR, j.elR, pose.armR, 1, pose.shrug, pose.shoulderZ);
-  applyLeg(j.hipL, j.kneeL, j.ankL, pose.legL, -1);
-  applyLeg(j.hipR, j.kneeR, j.ankR, pose.legR, 1);
-  applyHand(j.handL, pose.fist);
-  applyHand(j.handR, pose.fist);
+  // sourcils légèrement expressifs sur l'effort (bras hauts)
+  const effort = Math.max(pose.armL.fwd, pose.armR.fwd) > 120 ? 0.06 : 0;
+  j.browL.position.y = 0.108 + effort;
+  j.browR.position.y = 0.108 + effort;
+
+  // respiration
+  const bs = 1 + pose.belly * 0.3;
+  j.belly.scale.set(bs, bs, bs);
+  const cs = 1 + pose.belly * 0.12;
+  j.chestBreath.scale.set(cs, cs, cs);
+
+  applyArm(j.shL, j.elL, j.clavL, pose.armL, -1, pose.shrug, pose.shoulderZ);
+  applyArm(j.shR, j.elR, j.clavR, pose.armR, 1, pose.shrug, pose.shoulderZ);
+  applyLeg(j.hipL, j.kneeL, j.ankL, j.toeL, pose.legL, -1);
+  applyLeg(j.hipR, j.kneeR, j.ankR, j.toeR, pose.legR, 1);
+  poseHand(j.handL, pose.fist);
+  poseHand(j.handR, pose.fist);
+}
+
+// Balancement des mèches de cheveux (queue de cheval...) — appeler par frame.
+export function swayHair(refs: RigRefs, t: number): void {
+  const chain = refs.joints.current?.hairChain;
+  if (!chain || chain.length === 0) return;
+  for (let i = 0; i < chain.length; i++) {
+    const seg = chain[i];
+    const base = i === 0 ? 0.55 : 0;
+    seg.rotation.x = base + Math.sin(t * 1.6 + i * 0.9) * 0.06;
+    seg.rotation.z = Math.sin(t * 1.1 + i * 1.3) * 0.08;
+  }
 }
 
 // ---------- Le personnage (React, via les fabriques) ----------
 
-export function ClayRig({
-  refs,
-  avatar,
-}: {
-  refs: RigRefs;
-  avatar: Pick<AvatarState, "body" | "equipped">;
-}) {
-  const key = `${avatar.body}|${[...avatar.equipped].sort().join(",")}`;
+export function ClayRig({ refs, config }: { refs: RigRefs; config: AvatarConfig }) {
+  const key = `${config.hair}|${Object.values(config.colors).join(",")}|${[...config.equipped].sort().join(",")}`;
   const built = useMemo(
-    () => buildCharacter(avatar.body, avatar.equipped),
+    () => buildCharacter(config),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [key],
   );
@@ -304,129 +344,44 @@ export function ClayRig({
     return () => {
       if (refs.joints.current === built.joints) refs.joints.current = null;
       disposeObject(built.root);
+      built.materials.dispose();
     };
   }, [built, refs]);
 
   return <primitive object={built.root} />;
 }
 
-// ---------- Décor nature / calme ----------
+// ---------- Le jardin (île + objets/compagnons installés, animés) ----------
 
-function StageMat({ color }: { color: string }) {
-  return <meshStandardMaterial color={color} roughness={0.94} metalness={0} />;
-}
-
-const STAGE = {
-  pedestal: "#E9E0CE",
-  stool: "#D9C6A5",
-  leaf: "#5F8B6D",
-  leafDark: "#4F755D",
-  pot: "#C08552",
-  cream: "#F7F2E6",
-} as const;
-
-export function ClayStage({
+export function GardenStage({
+  equipped,
   seated,
   desk,
-  equipped,
 }: {
-  seated: boolean;
-  desk?: boolean;
   equipped: string[];
+  seated?: boolean;
+  desk?: boolean;
 }) {
-  return (
-    <group>
-      {/* socle d'argile */}
-      <mesh position={[0, -0.045, 0]} receiveShadow>
-        <cylinderGeometry args={[0.95, 1.02, 0.09, 48]} />
-        <StageMat color={STAGE.pedestal} />
-      </mesh>
-      {/* galets */}
-      <mesh position={[-0.72, 0.03, 0.4]} scale={[1, 0.6, 1]}>
-        <sphereGeometry args={[0.07, 16, 12]} />
-        <StageMat color="#D8CDB6" />
-      </mesh>
-      <mesh position={[-0.6, 0.02, 0.52]} scale={[1, 0.55, 1]}>
-        <sphereGeometry args={[0.045, 16, 12]} />
-        <StageMat color="#C9BFA8" />
-      </mesh>
-      {/* brins d'herbe */}
-      <group position={[0.78, 0, 0.3]}>
-        <mesh position={[0, 0.09, 0]} rotation={[0, 0, 0.25]}>
-          <coneGeometry args={[0.02, 0.2, 8]} />
-          <StageMat color={STAGE.leaf} />
-        </mesh>
-        <mesh position={[0.05, 0.07, 0.02]} rotation={[0, 0, -0.3]}>
-          <coneGeometry args={[0.016, 0.15, 8]} />
-          <StageMat color={STAGE.leafDark} />
-        </mesh>
-      </group>
-      {/* tabouret d'argile quand assis */}
-      {seated && (
-        <group>
-          <mesh position={[0, 0.42, -0.05]} castShadow receiveShadow>
-            <cylinderGeometry args={[0.26, 0.23, 0.09, 24]} />
-            <StageMat color={STAGE.stool} />
-          </mesh>
-          <mesh position={[0, 0.2, -0.05]}>
-            <cylinderGeometry args={[0.07, 0.1, 0.38, 14]} />
-            <StageMat color={STAGE.stool} />
-          </mesh>
-        </group>
-      )}
-      {/* bureau esquissé (exercices « au bureau ») */}
-      {desk && (
-        <group position={[0.62, 0, 0.15]}>
-          <mesh position={[0, 0.62, 0]} castShadow>
-            <boxGeometry args={[0.5, 0.05, 0.42]} />
-            <StageMat color={STAGE.stool} />
-          </mesh>
-          <mesh position={[0.2, 0.3, 0]}>
-            <cylinderGeometry args={[0.035, 0.045, 0.6, 10]} />
-            <StageMat color={STAGE.stool} />
-          </mesh>
-        </group>
-      )}
-      {/* accessoires de décor */}
-      {equipped.includes("plante-pot") && (
-        <group position={[-0.78, 0, -0.1]}>
-          <mesh position={[0, 0.1, 0]} castShadow>
-            <cylinderGeometry args={[0.1, 0.08, 0.18, 16]} />
-            <StageMat color={STAGE.pot} />
-          </mesh>
-          <mesh position={[0, 0.26, 0]}>
-            <sphereGeometry args={[0.09, 16, 12]} />
-            <StageMat color={STAGE.leaf} />
-          </mesh>
-          <mesh position={[-0.06, 0.33, 0.02]}>
-            <sphereGeometry args={[0.06, 16, 12]} />
-            <StageMat color={STAGE.leafDark} />
-          </mesh>
-          <mesh position={[0.07, 0.32, -0.02]}>
-            <sphereGeometry args={[0.05, 16, 12]} />
-            <StageMat color={STAGE.leaf} />
-          </mesh>
-        </group>
-      )}
-      {equipped.includes("tasse-tisane") && (
-        <group position={[0.68, 0, -0.35]}>
-          <mesh position={[0, 0.07, 0]} castShadow>
-            <cylinderGeometry args={[0.07, 0.055, 0.12, 16]} />
-            <StageMat color={STAGE.cream} />
-          </mesh>
-          <mesh position={[0.085, 0.07, 0]}>
-            <torusGeometry args={[0.03, 0.012, 8, 14]} />
-            <StageMat color={STAGE.cream} />
-          </mesh>
-          {/* vapeur */}
-          <mesh position={[0, 0.17, 0]} scale={[1, 1.6, 1]}>
-            <sphereGeometry args={[0.018, 10, 8]} />
-            <meshStandardMaterial color="#FFFFFF" roughness={1} transparent opacity={0.35} />
-          </mesh>
-        </group>
-      )}
-    </group>
-  );
+  const key = `${[...equipped].sort().join(",")}|${seated ? 1 : 0}|${desk ? 1 : 0}`;
+  const built = useMemo(() => {
+    const ms = new MatSet();
+    const root = buildGarden(equipped, ms, { seated, desk });
+    return { root, ms };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  useEffect(() => {
+    return () => {
+      disposeObject(built.root);
+      built.ms.dispose();
+    };
+  }, [built]);
+
+  useFrame((state) => {
+    animateGarden(built.root, state.clock.getElapsedTime());
+  });
+
+  return <primitive object={built.root} />;
 }
 
 export function ClayLights() {
