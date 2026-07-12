@@ -261,27 +261,26 @@ export interface HeadJoints {
 
 function buildEye(ctx: Ctx, skin: string, x: number, prefix: string) {
   const eye = reg(ctx.registry, `${prefix}`, new THREE.Group());
-  eye.position.set(x, 0.03, 0.152);
+  eye.position.set(x, 0.028, 0.156);
 
-  const ball = sphere(ctx, 0.052, CLAY.white, "yeux", 24, 18);
-  ball.scale.set(1, 1, 0.62);
+  // œil sombre en amande (comme la référence) — pas de blanc visible à distance
+  const ball = sphere(ctx, 0.041, CLAY.dark, "yeux", 20, 16);
+  ball.scale.set(0.82, 1.18, 0.52);
   eye.add(ball);
 
+  // iris + reflet subtils, groupés pour suivre le regard (gros plans yeux)
   const pupil = reg(ctx.registry, `${prefix}.pupille`, new THREE.Group());
-  const iris = sphere(ctx, 0.026, CLAY.iris, "yeux", 18, 14);
-  iris.position.z = 0.027;
+  const iris = sphere(ctx, 0.016, CLAY.iris, "yeux", 14, 10);
+  iris.position.z = 0.02;
   iris.scale.z = 0.5;
-  const dot = sphere(ctx, 0.0135, CLAY.dark, "yeux", 14, 10);
-  dot.position.z = 0.039;
-  dot.scale.z = 0.5;
-  const glint = sphere(ctx, 0.0052, CLAY.white, undefined, 8, 6);
-  glint.position.set(0.009, 0.01, 0.048);
-  pupil.add(iris, dot, glint);
+  const glint = sphere(ctx, 0.0085, CLAY.white, undefined, 10, 8);
+  glint.position.set(0.012, 0.016, 0.028);
+  pupil.add(iris, glint);
   eye.add(pupil);
 
   const mkLid = (upper: boolean) => {
     const lid = new THREE.Mesh(
-      new THREE.SphereGeometry(0.056, 20, 14, 0, Math.PI * 2, 0, Math.PI * (upper ? 0.55 : 0.4)),
+      new THREE.SphereGeometry(0.05, 20, 14, 0, Math.PI * 2, 0, Math.PI * (upper ? 0.55 : 0.4)),
       ctx.ms.mat(skin),
     );
     lid.scale.set(1, upper ? 1 : -1, 0.68);
@@ -408,23 +407,23 @@ function buildHead(ctx: Ctx, cfg: AvatarConfig): { root: THREE.Group; joints: He
     head.add(ear);
   }
 
-  // nez
-  const nose = sphere(ctx, 0.027, skin, "yeux", 16, 12);
-  nose.scale.set(0.85, 0.78, 0.9);
-  nose.position.set(0, -0.022, 0.206);
+  // nez : rond et bien présent (comme la référence)
+  const nose = sphere(ctx, 0.036, skin, "yeux", 18, 14);
+  nose.scale.set(0.92, 0.86, 1.05);
+  nose.position.set(0, -0.012, 0.207);
   head.add(nose);
 
   // yeux (globe + pupille + 2 paupières chacun)
-  const L = buildEye(ctx, skin, -0.078, "oeil.g");
-  const R = buildEye(ctx, skin, 0.078, "oeil.d");
+  const L = buildEye(ctx, skin, -0.068, "oeil.g");
+  const R = buildEye(ctx, skin, 0.068, "oeil.d");
   head.add(L.eye, R.eye);
 
   // sourcils articulés
   const brows: THREE.Group[] = [];
   for (const s of [-1, 1] as const) {
     const holder = reg(ctx.registry, `sourcil.${s === -1 ? "g" : "d"}`, new THREE.Group());
-    holder.position.set(0.078 * s, 0.108, 0.176);
-    const brow = new THREE.Mesh(new THREE.CapsuleGeometry(0.0115, 0.052, 6, 12), ctx.ms.mat(cfg.colors.hair));
+    holder.position.set(0.068 * s, 0.1, 0.184);
+    const brow = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 0.05, 6, 12), ctx.ms.mat(cfg.colors.hair));
     brow.rotation.z = Math.PI / 2 + 0.12 * s;
     holder.add(brow);
     head.add(holder);
@@ -619,12 +618,18 @@ function buildArm(ctx: Ctx, side: 1 | -1, cfg: AvatarConfig) {
   el.add(sphere(ctx, R, cfg.colors.top, "epaules", 20, 16));
   const forearm = reg(ctx.registry, `avant-bras.${sideName}`, new THREE.Group());
   // manche puis poignet (léger fuselage vers la main)
-  forearm.add(limb(ctx, 0.24, R * 0.92, cfg.colors.top, "poignets"));
-  const wrist = sphere(ctx, 0.05, cfg.colors.skin, "poignets", 18, 12);
+  forearm.add(limb(ctx, 0.22, R * 0.92, cfg.colors.top, "poignets"));
+  // poignet terracotta (comme la référence)
+  const cuff = torus(ctx, R * 0.92, 0.024, CLAY.accent);
+  cuff.rotation.x = Math.PI / 2;
+  cuff.position.y = -0.21;
+  forearm.add(cuff);
+  const wrist = sphere(ctx, 0.052, cfg.colors.skin, "poignets", 18, 12);
   wrist.position.y = -0.25;
   forearm.add(wrist);
   const hand = buildHand(ctx, side, cfg.colors.skin, `main.${sideName}`);
   hand.root.position.y = -0.28;
+  hand.root.scale.setScalar(1.15); // mains généreuses (comme la référence)
   forearm.add(hand.root);
   el.add(forearm);
   sh.add(el);
@@ -647,6 +652,11 @@ function buildLeg(ctx: Ctx, side: 1 | -1, cfg: AvatarConfig) {
   // genou : sphère au rayon du mollet → jonction lisse
   knee.add(sphere(ctx, RS, cfg.colors.trousers, "jambes", 20, 16));
   knee.add(limb(ctx, 0.32, RS, cfg.colors.trousers, "jambes"));
+  // bas de pantalon terracotta (comme la référence)
+  const hemCuff = torus(ctx, RS * 0.95, 0.026, CLAY.accent);
+  hemCuff.rotation.x = Math.PI / 2;
+  hemCuff.position.y = -0.3;
+  knee.add(hemCuff);
 
   const ank = reg(ctx.registry, `cheville.${sideName}`, new THREE.Group());
   ank.position.y = -0.34;
@@ -682,8 +692,8 @@ export function buildCharacter(cfg: AvatarConfig): BuiltCharacter {
   lower.scale.set(1.02, 0.8, 0.88);
   lower.position.y = 0.05;
   spine1.add(lower);
-  // ceinture
-  const belt = torus(ctx, 0.198, 0.028, cfg.colors.shoes);
+  // ourlet du pull, terracotta (comme la référence)
+  const belt = torus(ctx, 0.198, 0.03, CLAY.accent);
   belt.rotation.x = Math.PI / 2;
   belt.position.y = -0.02;
   spine1.add(belt);
@@ -718,10 +728,10 @@ export function buildCharacter(cfg: AvatarConfig): BuiltCharacter {
   belly.add(bellyBall);
   spine1.add(belly);
 
-  // col roulé
-  const collar = torus(ctx, 0.092, 0.026, cfg.colors.trousers);
+  // col ras-du-cou (même sauge que le pull)
+  const collar = torus(ctx, 0.09, 0.03, cfg.colors.top);
   collar.rotation.x = Math.PI / 2;
-  collar.position.y = 0.27;
+  collar.position.y = 0.28;
   chest.add(collar);
 
   // écharpe
