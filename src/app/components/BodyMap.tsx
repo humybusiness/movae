@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ZONE_COLORS, ZONE_LABELS, ZONES, type Zone } from "../types";
 
-// LA BODYMAP — silhouette 2D au trait noir, cœur du dashboard.
+// LA BODYMAP — silhouette anatomique 2D au trait noir, cœur du dashboard.
 //
-// Une silhouette humaine de face dessinée en trait noir. Chaque ZONE du corps
-// est une région cliquable, teintée selon sa sollicitation (sauge = bien
-// mobilisée → sable → terracotta = réclame du mouvement), pilotée par le
-// moteur. Un clic ouvre les exercices de la zone.
+// Une silhouette humaine de face (fidèle à la référence : tête ronde, épaules
+// naturelles, bras légèrement écartés, mains, pieds nus), dessinée en un seul
+// trait noir lissé. Des pastilles cliquables sont posées aux bons endroits du
+// corps ; leur couleur reflète la sollicitation de la zone (sauge = bien
+// mobilisée → sable → terracotta = réclame du mouvement) et un clic ouvre les
+// exercices de la zone.
 
 const FRESH = [0x7f, 0xa6, 0x8a];
 const MID = [0xd9, 0xc7, 0xa7];
@@ -20,27 +22,93 @@ function statusColor(strain: number): string {
   return `rgb(${c[0]} ${c[1]} ${c[2]})`;
 }
 
-// Régions cliquables (viewBox 0 0 200 380). Chaque zone est une forme simple
-// remplie par sa couleur d'état, posée sous le trait noir de la silhouette.
-type Region = { zone: Zone; el: "rect" | "circle" | "ellipse"; attrs: Record<string, number>; rx?: number };
+// ---- Contour de la silhouette (viewBox 0 0 300 640, centre x = 150) ----
+// On ne décrit que la MOITIÉ DROITE, de la couronne au périnée ; la gauche est
+// obtenue par symétrie (x → 300 − x). Le tracé final est une spline fermée
+// lissée qui passe par ces repères anatomiques.
+type P = [number, number];
 
-const REGIONS: Region[] = [
-  { zone: "yeux", el: "circle", attrs: { cx: 100, cy: 34, r: 13 } },
-  { zone: "nuque", el: "rect", attrs: { x: 90, y: 52, width: 20, height: 16 }, rx: 7 },
-  { zone: "epaules", el: "rect", attrs: { x: 62, y: 70, width: 76, height: 20 }, rx: 10 },
-  { zone: "dos", el: "rect", attrs: { x: 72, y: 92, width: 56, height: 50 }, rx: 16 },
-  { zone: "energie", el: "rect", attrs: { x: 78, y: 132, width: 44, height: 34 }, rx: 14 },
-  { zone: "hanches", el: "rect", attrs: { x: 72, y: 168, width: 56, height: 30 }, rx: 14 },
-  { zone: "poignets", el: "circle", attrs: { cx: 45, cy: 176, r: 12 } },
-  { zone: "jambes", el: "rect", attrs: { x: 78, y: 210, width: 44, height: 150 }, rx: 20 },
+const RIGHT_HALF: P[] = [
+  [168, 36], // couronne (droite)
+  [186, 66], // crâne, largeur max
+  [179, 91], // pommette / mâchoire
+  [165, 105], // mâchoire → cou
+  [160, 117], // cou (droite)
+  [179, 123], // trapèze
+  [206, 133], // épaule / deltoïde
+  [216, 159], // haut du bras
+  [219, 206], // bras
+  [218, 240], // coude
+  [214, 300], // avant-bras
+  [212, 330], // poignet (extérieur)
+  [219, 351], // dos de la main
+  [212, 379], // doigts
+  [200, 385], // bout des doigts
+  [193, 367], // main (intérieur)
+  [196, 336], // poignet (intérieur)
+  [201, 300], // avant-bras interne
+  [204, 240], // coude interne
+  [201, 186], // haut de bras interne
+  [190, 153], // aisselle
+  [180, 201], // flanc haut
+  [174, 240], // taille
+  [180, 275], // hanche haute
+  [193, 303], // hanche (largeur max)
+  [189, 351], // cuisse externe
+  [181, 449], // genou externe
+  [172, 521], // mollet externe
+  [165, 567], // cheville externe
+  [170, 583], // cou-de-pied
+  [188, 593], // orteils
+  [162, 597], // talon
+  [151, 569], // cheville interne
+  [150, 521], // mollet interne
+  [151, 449], // genou interne
+  [153, 351], // cuisse interne
+  [150, 323], // périnée (centre)
 ];
 
-function ZoneShape({ r, fill, opacity }: { r: Region; fill: string; opacity: number }) {
-  const common = { fill, opacity, style: { transition: "fill .7s ease, opacity .2s ease" } };
-  if (r.el === "circle") return <circle {...r.attrs} {...common} />;
-  if (r.el === "ellipse") return <ellipse {...r.attrs} {...common} />;
-  return <rect {...r.attrs} rx={r.rx} {...common} />;
+const APEX: P = [150, 30]; // sommet du crâne, sur l'axe
+
+function fullLoop(): P[] {
+  const mirror = ([x, y]: P): P => [300 - x, y];
+  const pts: P[] = [APEX, ...RIGHT_HALF];
+  // remontée du côté gauche : miroir des points, du périnée vers la couronne,
+  // en sautant le dernier (périnée, déjà sur l'axe).
+  for (let i = RIGHT_HALF.length - 2; i >= 0; i--) pts.push(mirror(RIGHT_HALF[i]));
+  return pts;
 }
+
+// Spline de Catmull-Rom fermée → chemin SVG cubique lissé.
+function smoothClosedPath(pts: P[]): string {
+  const n = pts.length;
+  const pt = (i: number) => pts[((i % n) + n) % n];
+  let d = `M ${pt(0)[0].toFixed(1)} ${pt(0)[1].toFixed(1)} `;
+  for (let i = 0; i < n; i++) {
+    const p0 = pt(i - 1);
+    const p1 = pt(i);
+    const p2 = pt(i + 1);
+    const p3 = pt(i + 2);
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += `C ${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)} `;
+  }
+  return d + "Z";
+}
+
+// Pastilles cliquables, posées au bon endroit du corps.
+const DOTS: { zone: Zone; x: number; y: number }[] = [
+  { zone: "yeux", x: 150, y: 62 },
+  { zone: "nuque", x: 150, y: 110 },
+  { zone: "epaules", x: 196, y: 132 },
+  { zone: "dos", x: 150, y: 175 },
+  { zone: "energie", x: 150, y: 235 },
+  { zone: "hanches", x: 150, y: 300 },
+  { zone: "poignets", x: 207, y: 335 },
+  { zone: "jambes", x: 168, y: 470 },
+];
 
 export function BodyMap({
   strain,
@@ -51,70 +119,64 @@ export function BodyMap({
 }) {
   const sorted = [...ZONES].sort((a, b) => strain[b] - strain[a]);
   const [hovered, setHovered] = useState<Zone | null>(null);
+  const path = useMemo(() => smoothClosedPath(fullLoop()), []);
   const ink = "var(--m-ink)";
 
   return (
     <div className="flex flex-wrap items-center gap-6">
       <svg
-        viewBox="0 0 200 380"
+        viewBox="20 10 260 620"
         className="w-40 shrink-0 sm:w-48"
         role="img"
-        aria-label="BodyMap : silhouette du corps, chaque zone colorée selon sa sollicitation — cliquez une zone pour ses exercices"
+        aria-label="BodyMap : silhouette du corps avec des pastilles cliquables par zone, colorées selon la sollicitation"
       >
         {/* ombre au sol */}
-        <ellipse cx={100} cy={372} rx={44} ry={5} fill={ink} opacity={0.08} />
+        <ellipse cx={150} cy={606} rx={52} ry={6} fill={ink} opacity={0.07} />
 
-        {/* --- zones colorées (sous le trait) --- */}
-        {REGIONS.map((r) => (
-          <g
-            key={r.zone}
-            role="button"
-            tabIndex={0}
-            aria-label={`${ZONE_LABELS[r.zone]} — voir les exercices`}
-            onClick={() => onZoneClick?.(r.zone)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onZoneClick?.(r.zone);
-              }
-            }}
-            onMouseEnter={() => setHovered(r.zone)}
-            onMouseLeave={() => setHovered(null)}
-            className="cursor-pointer outline-none"
-          >
-            <ZoneShape r={r} fill={statusColor(strain[r.zone])} opacity={hovered === r.zone ? 1 : 0.85} />
-          </g>
-        ))}
-
-        {/* --- silhouette : trait noir par-dessus (non interactif) --- */}
-        <g
-          fill="none"
+        {/* silhouette : trait noir, intérieur discret */}
+        <path
+          d={path}
+          fill="var(--m-card)"
           stroke={ink}
-          strokeWidth={3}
-          strokeLinecap="round"
+          strokeWidth={2.4}
           strokeLinejoin="round"
-          pointerEvents="none"
-        >
-          {/* tête + cou */}
-          <circle cx={100} cy={34} r={22} />
-          <path d="M90 54 L90 68 M110 54 L110 68" />
-          {/* épaules + tronc */}
-          <path d="M90 66 C70 68 60 78 58 92 L66 150 C68 168 72 176 72 196 L128 196 C128 176 132 168 134 150 L142 92 C140 78 130 68 110 66" />
-          {/* taille (repère abdos) */}
-          <path d="M74 132 C88 138 112 138 126 132" opacity={0.35} strokeWidth={2} />
-          {/* bras gauche */}
-          <path d="M60 90 C48 104 42 132 42 160 C42 170 44 178 46 186" />
-          {/* bras droit */}
-          <path d="M140 90 C152 104 158 132 158 160 C158 170 156 178 154 186" />
-          {/* mains */}
-          <circle cx={45} cy={190} r={7} />
-          <circle cx={155} cy={190} r={7} />
-          {/* bassin + jambes */}
-          <path d="M74 196 L80 300 C81 330 82 350 84 366 L96 366 C97 348 98 320 100 300 C102 320 103 348 104 366 L116 366 C118 350 119 330 120 300 L126 196" />
-          {/* pieds */}
-          <path d="M82 366 C78 372 74 373 72 373 L92 373 L92 366" />
-          <path d="M118 366 C122 372 126 373 128 373 L108 373 L108 366" />
-        </g>
+        />
+
+        {/* pastilles cliquables → exercices de la zone */}
+        {DOTS.map(({ zone, x, y }) => {
+          const active = hovered === zone;
+          return (
+            <g
+              key={zone}
+              role="button"
+              tabIndex={0}
+              aria-label={`${ZONE_LABELS[zone]} : ${Math.round(strain[zone])} sur 100 — voir les exercices`}
+              onClick={() => onZoneClick?.(zone)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onZoneClick?.(zone);
+                }
+              }}
+              onMouseEnter={() => setHovered(zone)}
+              onMouseLeave={() => setHovered(null)}
+              className="cursor-pointer outline-none"
+              style={{ transition: "transform .15s ease" }}
+            >
+              {/* halo d'identité (couleur signature de la zone) */}
+              <circle cx={x} cy={y} r={active ? 17 : 13} fill={ZONE_COLORS[zone]} opacity={active ? 0.28 : 0.16} />
+              {/* pastille : couleur = état de la zone */}
+              <circle cx={x} cy={y} r={active ? 11 : 9} fill={statusColor(strain[zone])} stroke="var(--m-card)" strokeWidth={2.5} />
+              <path
+                d={`M${x - 3} ${y} H${x + 3} M${x} ${y - 3} V${y + 3}`}
+                stroke="var(--m-card)"
+                strokeWidth={1.6}
+                strokeLinecap="round"
+              />
+              <title>{`${ZONE_LABELS[zone]} : ${Math.round(strain[zone])}/100 — cliquez pour les exercices`}</title>
+            </g>
+          );
+        })}
       </svg>
 
       {/* Détail par zone (cliquable, synchronisé au survol) */}
@@ -146,8 +208,8 @@ export function BodyMap({
           );
         })}
         <p className="pt-1.5 text-[11px] text-[var(--m-ink2)]">
-          Sauge = bien mobilisé · terracotta = réclame du mouvement. Cliquez une zone
-          pour ses exercices.
+          Sauge = bien mobilisé · terracotta = réclame du mouvement. Cliquez une pastille
+          (ou une zone) pour ses exercices.
         </p>
       </div>
     </div>
