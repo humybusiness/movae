@@ -42,11 +42,12 @@ export interface AvatarConfig {
 export class MatSet {
   private map = new Map<string, THREE.MeshStandardMaterial>();
 
-  mat(color: string, roughness = 0.94): THREE.MeshStandardMaterial {
+  // Rendu lisse (galet poli / vinyle doux), pas mat comme la pâte à modeler.
+  mat(color: string, roughness = 0.42): THREE.MeshStandardMaterial {
     const key = `${color}:${roughness}`;
     let m = this.map.get(key);
     if (!m) {
-      m = new THREE.MeshStandardMaterial({ color, roughness, metalness: 0 });
+      m = new THREE.MeshStandardMaterial({ color, roughness, metalness: 0.04 });
       this.map.set(key, m);
     }
     return m;
@@ -295,7 +296,9 @@ function buildEye(ctx: Ctx, skin: string, x: number, prefix: string) {
 function buildHair(ctx: Ctx, hairId: HairId, color: string): { group: THREE.Group; chain: THREE.Group[] } {
   const g = new THREE.Group();
   const chain: THREE.Group[] = [];
-  const cap = (theta: number, r = 0.219, y = 0.05) => {
+  // Calotte : hémisphère centré sur le crâne. theta bas = ligne de cheveux
+  // haute (le front reste dégagé, jamais sur les yeux qui sont à y≈0.03).
+  const cap = (theta = 0.42, r = 0.216, y = 0.02) => {
     const c = new THREE.Mesh(
       new THREE.SphereGeometry(r, 40, 26, 0, Math.PI * 2, 0, Math.PI * theta),
       ctx.ms.mat(color),
@@ -313,62 +316,68 @@ function buildHair(ctx: Ctx, hairId: HairId, color: string): { group: THREE.Grou
     g.add(b);
     return b;
   };
+  // Couvre l'arrière du crâne et la nuque (le cap dégage le front mais laisse
+  // l'occiput nu) — placé derrière, jamais visible de face.
+  const backPatch = (down = -0.02, r = 0.2) => {
+    const b = sphere(ctx, r, color, "yeux", 24, 18);
+    b.position.set(0, down, -0.055);
+    b.scale.set(1, 1.05, 0.9);
+    g.add(b);
+    return b;
+  };
 
   if (hairId === "ras") {
-    cap(0.52, 0.214, 0.055);
+    cap(0.4, 0.212, 0.02);
+    backPatch(-0.01, 0.19);
   } else if (hairId === "court") {
-    cap(0.55);
-    blob(0.06, 0.045, 0.155, 0.15, 1.5, 0.55, 0.8); // mèche frontale
-    blob(0.045, -0.198, 0.045, 0.005, 0.5, 0.9, 0.8);
-    blob(0.045, 0.198, 0.045, 0.005, 0.5, 0.9, 0.8);
+    cap(0.42);
+    backPatch();
+    // légère houppe au sommet, bien au-dessus du front
+    blob(0.07, 0.03, 0.16, 0.075, 1.4, 0.6, 1.1);
   } else if (hairId === "mi-long") {
-    cap(0.6);
-    blob(0.07, -0.05, 0.15, 0.152, 1.35, 0.5, 0.75);
-    // rideau qui descend sur la nuque et les côtés
-    blob(0.09, -0.16, -0.06, -0.06, 0.75, 1.35, 0.9);
-    blob(0.09, 0.16, -0.06, -0.06, 0.75, 1.35, 0.9);
-    blob(0.11, 0, -0.05, -0.13, 1.3, 1.25, 0.7);
+    cap(0.44);
+    backPatch(-0.08, 0.205);
+    // rideau qui descend le long des joues (derrière les oreilles)
+    blob(0.075, -0.185, -0.05, -0.02, 0.8, 1.5, 0.95);
+    blob(0.075, 0.185, -0.05, -0.02, 0.8, 1.5, 0.95);
+    blob(0.11, 0, -0.12, -0.11, 1.35, 1.35, 0.85);
   } else if (hairId === "chignon") {
-    cap(0.6);
-    blob(0.07, -0.05, 0.15, 0.152, 1.35, 0.5, 0.75);
-    blob(0.05, -0.175, 0.02, 0.045, 0.55, 1.1, 0.7);
-    blob(0.05, 0.175, 0.02, 0.045, 0.55, 1.1, 0.7);
-    const bun = blob(0.095, 0, 0.12, -0.2);
+    cap(0.42);
+    backPatch(-0.02, 0.19);
+    const bun = blob(0.095, 0, 0.14, -0.19);
     void bun;
     const tie = torus(ctx, 0.05, 0.014, CLAY.accent);
-    tie.position.set(0, 0.135, -0.155);
+    tie.position.set(0, 0.15, -0.145);
     tie.rotation.x = 0.5;
     g.add(tie);
   } else if (hairId === "queue") {
-    cap(0.58);
-    blob(0.06, 0.05, 0.155, 0.15, 1.4, 0.5, 0.75);
+    cap(0.42);
+    backPatch(-0.03, 0.19);
     const tie = torus(ctx, 0.045, 0.013, CLAY.accent);
-    tie.position.set(0, 0.14, -0.17);
+    tie.position.set(0, 0.13, -0.17);
     tie.rotation.x = 1.0;
     g.add(tie);
-    // queue en 3 segments animés (balancement)
     let parent: THREE.Object3D = g;
     const lens = [0.14, 0.12, 0.1];
     for (let i = 0; i < 3; i++) {
       const seg = reg(ctx.registry, `cheveux.queue.${i + 1}`, new THREE.Group());
-      seg.position.set(0, i === 0 ? 0.13 : -lens[i - 1], i === 0 ? -0.19 : 0);
+      seg.position.set(0, i === 0 ? 0.12 : -lens[i - 1], i === 0 ? -0.19 : 0);
       if (i === 0) seg.rotation.x = 0.55;
-      const m = limb(ctx, lens[i], 0.052 - i * 0.011, color, "yeux");
+      const m = limb(ctx, lens[i], 0.05 - i * 0.011, color, "yeux");
       seg.add(m);
       parent.add(seg);
       parent = seg;
       chain.push(seg);
     }
   } else if (hairId === "boucles") {
-    cap(0.55);
-    // couronne de boucles
-    for (let i = 0; i < 9; i++) {
-      const a = (i / 9) * Math.PI * 2;
-      blob(0.075, Math.cos(a) * 0.16, 0.16 + Math.sin(i * 2.7) * 0.02, Math.sin(a) * 0.16, 0.95, 0.85, 0.95);
+    cap(0.4);
+    backPatch(-0.03, 0.2);
+    // couronne de boucles, toutes au-dessus de la ligne de front
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      blob(0.072, Math.cos(a) * 0.16, 0.15 + Math.sin(i * 2.7) * 0.02, Math.sin(a) * 0.15 - 0.02, 0.95, 0.85, 0.95);
     }
-    blob(0.07, 0, 0.23, 0.02);
-    blob(0.055, -0.19, 0.02, 0.02, 0.7, 1, 0.8);
-    blob(0.055, 0.19, 0.02, 0.02, 0.7, 1, 0.8);
+    blob(0.07, 0, 0.22, 0.0);
   }
   return { group: g, chain };
 }
@@ -594,30 +603,26 @@ const SHOULDER_Y = 0.24; // relatif au segment poitrine
 
 function buildArm(ctx: Ctx, side: 1 | -1, cfg: AvatarConfig) {
   const sideName = side === -1 ? "g" : "d";
+  const R = 0.066; // rayon du bras (constant → tube lisse)
   const clav = reg(ctx.registry, `clavicule.${sideName}`, new THREE.Group());
   clav.position.set(0.1 * side, SHOULDER_Y, 0);
 
   const sh = reg(ctx.registry, `epaule.${sideName}`, new THREE.Group());
   sh.position.set(0.17 * side, 0, 0);
-
-  // épaule ronde (manche)
-  const cap = sphere(ctx, 0.088, cfg.colors.top, "epaules");
-  sh.add(cap);
-  sh.add(limb(ctx, 0.3, 0.066, cfg.colors.top, "epaules"));
-  // ourlet de manche au coude
-  const cuff = torus(ctx, 0.06, 0.014, cfg.colors.trousers);
-  cuff.rotation.x = Math.PI / 2;
-  cuff.position.y = -0.29;
-  sh.add(cuff);
+  // épaule : sphère au rayon exact du bras → la jonction disparaît
+  sh.add(sphere(ctx, R, cfg.colors.top, "epaules"));
+  sh.add(limb(ctx, 0.32, R, cfg.colors.top, "epaules"));
 
   const el = reg(ctx.registry, `coude.${sideName}`, new THREE.Group());
   el.position.y = -0.32;
-  // boule de coude pour un pli d'argile doux
-  const elbowBall = sphere(ctx, 0.058, cfg.colors.top, "epaules", 20, 14);
-  el.add(elbowBall);
-  // pronation/supination : l'avant-bras pivote sur son axe (paumes vers le ciel)
+  // coude : même rayon, même couleur → pli lisse invisible
+  el.add(sphere(ctx, R, cfg.colors.top, "epaules", 20, 16));
   const forearm = reg(ctx.registry, `avant-bras.${sideName}`, new THREE.Group());
-  forearm.add(limb(ctx, 0.26, 0.054, cfg.colors.skin, "poignets"));
+  // manche puis poignet (léger fuselage vers la main)
+  forearm.add(limb(ctx, 0.24, R * 0.92, cfg.colors.top, "poignets"));
+  const wrist = sphere(ctx, 0.05, cfg.colors.skin, "poignets", 18, 12);
+  wrist.position.y = -0.25;
+  forearm.add(wrist);
   const hand = buildHand(ctx, side, cfg.colors.skin, `main.${sideName}`);
   hand.root.position.y = -0.28;
   forearm.add(hand.root);
@@ -630,19 +635,18 @@ function buildArm(ctx: Ctx, side: 1 | -1, cfg: AvatarConfig) {
 
 function buildLeg(ctx: Ctx, side: 1 | -1, cfg: AvatarConfig) {
   const sideName = side === -1 ? "g" : "d";
+  const RT = 0.088; // cuisse
+  const RS = 0.078; // mollet
   const hip = reg(ctx.registry, `hanche.${sideName}`, new THREE.Group());
   hip.position.set(0.13 * side, -0.02, 0);
-  hip.add(limb(ctx, 0.36, 0.096, cfg.colors.trousers, "hanches"));
+  hip.add(sphere(ctx, RT, cfg.colors.trousers, "hanches", 20, 16));
+  hip.add(limb(ctx, 0.36, RT, cfg.colors.trousers, "hanches"));
 
   const knee = reg(ctx.registry, `genou.${sideName}`, new THREE.Group());
   knee.position.y = -0.36;
-  const kneeBall = sphere(ctx, 0.082, cfg.colors.trousers, "jambes", 20, 14);
-  knee.add(kneeBall);
-  knee.add(limb(ctx, 0.32, 0.078, cfg.colors.trousers, "jambes"));
-  const hem = torus(ctx, 0.072, 0.016, cfg.colors.shoes);
-  hem.rotation.x = Math.PI / 2;
-  hem.position.y = -0.3;
-  knee.add(hem);
+  // genou : sphère au rayon du mollet → jonction lisse
+  knee.add(sphere(ctx, RS, cfg.colors.trousers, "jambes", 20, 16));
+  knee.add(limb(ctx, 0.32, RS, cfg.colors.trousers, "jambes"));
 
   const ank = reg(ctx.registry, `cheville.${sideName}`, new THREE.Group());
   ank.position.y = -0.34;

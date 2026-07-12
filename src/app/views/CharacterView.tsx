@@ -96,7 +96,7 @@ export function CharacterView() {
   return (
     <div className="mx-auto max-w-5xl">
       <SectionTitle
-        title="Votre personnage"
+        title="Votre avatar"
         subtitle="Il fait chaque exercice avec vous. Gagnez des élans en bougeant, façonnez-le à votre image."
       />
 

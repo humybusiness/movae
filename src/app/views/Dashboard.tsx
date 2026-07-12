@@ -32,6 +32,7 @@ import { levelFor } from "../data/levels";
 import { tipOfDay } from "../data/tips";
 import { dayKey, formatClock, formatDuration } from "../../lib/time";
 import { BodyMap } from "../components/BodyMap";
+import { AvatarDesk } from "../components/AvatarDesk";
 import { ExerciseFigure3D } from "../components/ExerciseFigure3D";
 import { ExerciseVisual } from "../components/ExerciseVisual";
 import { IndexVisual } from "../components/IndexVisual";
@@ -118,6 +119,54 @@ export function Dashboard({
           </p>
         )}
       </div>
+
+      {/* HERO — l'avatar à son poste de travail + minuteur */}
+      <MCard className="overflow-hidden p-0">
+        <div className="grid items-stretch gap-0 sm:grid-cols-[1.5fr_1fr]">
+          <div className="relative bg-[radial-gradient(120%_100%_at_50%_10%,var(--m-soft)_0%,var(--m-bg2)_100%)]">
+            <AvatarDesk height={320} />
+            <span className="absolute left-4 top-4 rounded-full bg-[var(--m-card)]/80 px-3 py-1 text-xs font-semibold text-[var(--m-ink2)] backdrop-blur">
+              Votre avatar {working ? "au travail" : "en pause"}
+            </span>
+          </div>
+          <div className="flex flex-col justify-center gap-4 border-t border-[var(--m-line)] p-6 sm:border-l sm:border-t-0">
+            <div>
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[var(--m-ink2)]">
+                <Clock className="h-3.5 w-3.5" aria-hidden />
+                {working ? "Session en cours" : "Journée à démarrer"}
+              </p>
+              <p className="font-display mt-1 text-4xl font-semibold tabular-nums tracking-tight">
+                {working && state.session.startedAt
+                  ? formatDuration(Math.round((now - state.session.startedAt) / 60000))
+                  : "—"}
+              </p>
+              <p className="mt-0.5 text-xs text-[var(--m-ink2)]">
+                {working ? "de travail aujourd’hui" : "Démarrez pour lancer le minuteur"}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-[var(--m-bg2)] px-4 py-3">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--m-ink2)]">
+                Prochaine pause
+              </p>
+              {working && rec.nextIdealAt ? (
+                <p className="font-display text-2xl font-semibold tabular-nums text-[var(--m-strong)]">
+                  ~{formatClock(rec.nextIdealAt)}
+                </p>
+              ) : working ? (
+                <p className="font-display text-lg font-semibold text-[var(--m-accent)]">
+                  C’est le moment
+                </p>
+              ) : (
+                <p className="text-sm text-[var(--m-ink2)]">après le démarrage</p>
+              )}
+            </div>
+            <p className="text-[11px] leading-relaxed text-[var(--m-ink2)]">
+              Gagnez des élans en bougeant pour équiper votre avatar et faire grandir
+              son jardin.
+            </p>
+          </div>
+        </div>
+      </MCard>
 
       {/* Bandeau yeux (règle 20-20-20) */}
       {rec.eyeDue && working && (

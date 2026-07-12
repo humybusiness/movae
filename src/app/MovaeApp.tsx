@@ -51,7 +51,7 @@ const NAV: { id: ViewId; label: string; icon: typeof Home }[] = [
   { id: "accueil", label: "Accueil", icon: Home },
   { id: "exercices", label: "Exercices", icon: Dumbbell },
   { id: "programmes", label: "Programmes", icon: LayoutList },
-  { id: "personnage", label: "Personnage", icon: PersonStanding },
+  { id: "personnage", label: "Avatar", icon: PersonStanding },
   { id: "progression", label: "Progression", icon: TrendingUp },
   { id: "recompenses", label: "Récompenses", icon: Award },
   { id: "reglages", label: "Réglages", icon: Settings },
@@ -336,8 +336,8 @@ function AppInner() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setView("personnage")}
-                  title="Vos élans — l'atelier du personnage"
-                  aria-label={`${state.avatar.clay} élans — ouvrir l'atelier du personnage`}
+                  title="Vos élans — l'atelier de l'avatar"
+                  aria-label={`${state.avatar.clay} élans — ouvrir l'atelier de l'avatar`}
                   className="flex items-center gap-1.5 rounded-full bg-[var(--m-soft)] px-3 py-1.5 text-xs font-bold text-[var(--m-strong)] transition hover:brightness-105"
                 >
                   <span
@@ -436,7 +436,7 @@ function AppInner() {
             const ex = exerciseById(exercise.id) ?? exercise;
             dispatch({ type: "complete-break", exercise: ex, now: Date.now(), actualSec });
             activity.consumeEpisodeEnd();
-            const toast = { id: `clay-${Date.now()}`, text: "+5 élans pour votre personnage" };
+            const toast = { id: `clay-${Date.now()}`, text: "+5 élans pour votre avatar" };
             setToasts((t) => [...t, toast]);
             setTimeout(() => setToasts((t) => t.filter((x) => x.id !== toast.id)), 4000);
           }}
