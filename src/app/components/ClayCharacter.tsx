@@ -1,13 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import {
-  buildCharacter,
-  disposeObject,
-  poseHand,
-  type AvatarConfig,
-  type CharacterJoints,
-} from "./clayParts";
+import { disposeObject, poseHand, type AvatarConfig, type CharacterJoints } from "./clayParts";
+import { buildCharacter } from "./skinnedAvatar";
 import { animateGarden, buildGarden } from "./gardenParts";
 import { MatSet } from "./clayParts";
 import type { FrontPose, Motion, SidePose } from "../data/motions";
@@ -230,9 +225,9 @@ export function useRigRefs(): RigRefs {
 // ---------- Application d'une pose (impératif, 60 fps) ----------
 
 function applyArm(
-  sh: THREE.Group,
-  el: THREE.Group,
-  clav: THREE.Group,
+  sh: THREE.Object3D,
+  el: THREE.Object3D,
+  clav: THREE.Object3D,
   arm: Arm3D,
   side: 1 | -1,
   shrug: number,
@@ -246,10 +241,10 @@ function applyArm(
 }
 
 function applyLeg(
-  hip: THREE.Group,
-  knee: THREE.Group,
-  ank: THREE.Group,
-  toe: THREE.Group,
+  hip: THREE.Object3D,
+  knee: THREE.Object3D,
+  ank: THREE.Object3D,
+  toe: THREE.Object3D,
   leg: Leg3D,
   side: 1 | -1,
 ) {

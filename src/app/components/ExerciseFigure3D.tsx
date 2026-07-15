@@ -18,9 +18,7 @@ import {
 } from "./ClayCharacter";
 import { buildLooseHand, disposeObject, poseHand, type AvatarConfig } from "./clayParts";
 import { gardenItemIds } from "./gardenParts";
-import { RiggedAvatar } from "./RiggedAvatar";
 import { defaultAvatar, useMovaeMaybe } from "../state/store";
-import type { HairId } from "../types";
 import { MOTIONS, type FaceKind, type HandsKind, type Motion, type MotionId } from "../data/motions";
 import type { AvatarState } from "../types";
 
@@ -32,9 +30,6 @@ import type { AvatarState } from "../types";
 export function avatarConfig(avatar: AvatarState): AvatarConfig {
   return { hair: avatar.hair, colors: avatar.colors, equipped: avatar.equipped };
 }
-
-// Coupes qui correspondent au modèle riggé « female » (les autres → « male »).
-const FEMALE_HAIRS = new Set<HairId>(["mi-long", "chignon", "queue", "boucles"]);
 
 // ---------- Cadrage par vue ----------
 
@@ -457,19 +452,11 @@ function PortraitScene({ config }: { config: AvatarConfig }) {
     if (!reduced.current) swayHair(refs, t);
   });
 
-  // Si un modèle riggé (.glb) est disponible, on l'affiche en priorité
-  // (rendu lisse, peau déformable) ; sinon repli sur l'avatar procédural.
-  const bodyId = FEMALE_HAIRS.has(config.hair) ? "female" : "male";
-
   return (
     <group position={[0, -0.82, 0]}>
       <ClayLights />
       <group ref={rig}>
-        <RiggedAvatar
-          id={bodyId}
-          targetHeight={1.62}
-          fallback={<ClayRig refs={refs} config={config} />}
-        />
+        <ClayRig refs={refs} config={config} />
         <GardenStage equipped={config.equipped} seated />
       </group>
     </group>

@@ -1,12 +1,12 @@
 import * as THREE from "three";
 import {
   addStudioLights,
-  buildCharacter,
   buildLooseHand,
   disposeObject,
   poseHand,
   type AvatarConfig,
 } from "./clayParts";
+import { buildCharacter } from "./skinnedAvatar";
 import type { HighlightZone } from "../data/motions";
 
 // ============================================================================

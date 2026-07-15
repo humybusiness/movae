@@ -63,19 +63,19 @@ export class MatSet {
 
 export type Registry = Map<string, THREE.Object3D>;
 
-function reg(registry: Registry, name: string, node: THREE.Object3D): THREE.Group {
+export function reg<T extends THREE.Object3D>(registry: Registry, name: string, node: T): T {
   registry.set(name, node);
-  return node as THREE.Group;
+  return node;
 }
 
 // ---------- Primitives ----------
 
-interface Ctx {
+export interface Ctx {
   ms: MatSet;
   registry: Registry;
 }
 
-function sphere(ctx: Ctx, r: number, color: string, zone?: Zone, w = 32, h = 24): THREE.Mesh {
+export function sphere(ctx: Ctx, r: number, color: string, zone?: Zone, w = 32, h = 24): THREE.Mesh {
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, w, h), ctx.ms.mat(color));
   mesh.castShadow = true;
   if (zone) mesh.userData.zone = zone;
@@ -83,7 +83,7 @@ function sphere(ctx: Ctx, r: number, color: string, zone?: Zone, w = 32, h = 24)
 }
 
 // Capsule orientée vers le bas depuis l'origine (articulation en haut).
-function limb(ctx: Ctx, length: number, radius: number, color: string, zone?: Zone): THREE.Mesh {
+export function limb(ctx: Ctx, length: number, radius: number, color: string, zone?: Zone): THREE.Mesh {
   const mesh = new THREE.Mesh(
     new THREE.CapsuleGeometry(radius, Math.max(0.01, length - radius * 2), 8, 24),
     ctx.ms.mat(color),
@@ -94,7 +94,7 @@ function limb(ctx: Ctx, length: number, radius: number, color: string, zone?: Zo
   return mesh;
 }
 
-function torus(ctx: Ctx, r: number, tube: number, color: string, arc = Math.PI * 2): THREE.Mesh {
+export function torus(ctx: Ctx, r: number, tube: number, color: string, arc = Math.PI * 2): THREE.Mesh {
   const mesh = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 12, 32, arc), ctx.ms.mat(color));
   mesh.castShadow = true;
   return mesh;
@@ -104,6 +104,7 @@ function torus(ctx: Ctx, r: number, tube: number, color: string, arc = Math.PI *
 export function disposeObject(root: THREE.Object3D): void {
   root.traverse((o) => {
     if (o instanceof THREE.Mesh) o.geometry.dispose();
+    if ((o as THREE.SkinnedMesh).isSkinnedMesh) (o as THREE.SkinnedMesh).skeleton.dispose();
   });
 }
 
@@ -207,7 +208,7 @@ export function poseHand(hand: HandJoints, curl: number, spread = 0): void {
 
 // ---------- Pied : chaussure + orteils articulés ----------
 
-function buildFoot(ctx: Ctx, shoes: string, prefix: string): { root: THREE.Group; toe: THREE.Group } {
+export function buildFoot(ctx: Ctx, shoes: string, prefix: string): { root: THREE.Group; toe: THREE.Group } {
   const g = new THREE.Group();
   // chaussette
   const sock = torus(ctx, 0.052, 0.02, CLAY.cream);
@@ -381,7 +382,7 @@ function buildHair(ctx: Ctx, hairId: HairId, color: string): { group: THREE.Grou
   return { group: g, chain };
 }
 
-function buildHead(ctx: Ctx, cfg: AvatarConfig): { root: THREE.Group; joints: HeadJoints } {
+export function buildHead(ctx: Ctx, cfg: AvatarConfig): { root: THREE.Group; joints: HeadJoints } {
   const skin = cfg.colors.skin;
   const head = reg(ctx.registry, "tete", new THREE.Group());
 
@@ -480,7 +481,7 @@ function buildHead(ctx: Ctx, cfg: AvatarConfig): { root: THREE.Group; joints: He
 
 // ---------- Accessoires portés ----------
 
-function buildAccessory(ctx: Ctx, id: string): THREE.Object3D | null {
+export function buildAccessory(ctx: Ctx, id: string): THREE.Object3D | null {
   if (id === "lunettes-rondes") {
     const g = new THREE.Group();
     for (const s of [-1, 1] as const) {
@@ -548,47 +549,49 @@ function buildAccessory(ctx: Ctx, id: string): THREE.Object3D | null {
 
 // ---------- Le personnage complet ----------
 
+// Les articulations sont des Object3D : des Bone (squelette du skinned mesh)
+// pour le corps, des Group pour les éléments rigides (doigts, paupières...).
 export interface CharacterJoints {
-  root: THREE.Group;
-  pelvis: THREE.Group;
-  spine1: THREE.Group;
-  spine2: THREE.Group;
-  chest: THREE.Group;
-  belly: THREE.Group;
-  chestBreath: THREE.Group;
-  clavL: THREE.Group;
-  clavR: THREE.Group;
-  neck1: THREE.Group;
-  neck2: THREE.Group;
-  head: THREE.Group;
-  jaw: THREE.Group;
-  eyeL: THREE.Group;
-  eyeR: THREE.Group;
-  pupilL: THREE.Group;
-  pupilR: THREE.Group;
+  root: THREE.Object3D;
+  pelvis: THREE.Object3D;
+  spine1: THREE.Object3D;
+  spine2: THREE.Object3D;
+  chest: THREE.Object3D;
+  belly: THREE.Object3D;
+  chestBreath: THREE.Object3D;
+  clavL: THREE.Object3D;
+  clavR: THREE.Object3D;
+  neck1: THREE.Object3D;
+  neck2: THREE.Object3D;
+  head: THREE.Object3D;
+  jaw: THREE.Object3D;
+  eyeL: THREE.Object3D;
+  eyeR: THREE.Object3D;
+  pupilL: THREE.Object3D;
+  pupilR: THREE.Object3D;
   lidL: THREE.Mesh;
   lidR: THREE.Mesh;
   lidLowL: THREE.Mesh;
   lidLowR: THREE.Mesh;
-  browL: THREE.Group;
-  browR: THREE.Group;
+  browL: THREE.Object3D;
+  browR: THREE.Object3D;
   hairChain: THREE.Group[];
-  shL: THREE.Group;
-  elL: THREE.Group;
-  forearmL: THREE.Group;
+  shL: THREE.Object3D;
+  elL: THREE.Object3D;
+  forearmL: THREE.Object3D;
   handL: HandJoints;
-  shR: THREE.Group;
-  elR: THREE.Group;
-  forearmR: THREE.Group;
+  shR: THREE.Object3D;
+  elR: THREE.Object3D;
+  forearmR: THREE.Object3D;
   handR: HandJoints;
-  hipL: THREE.Group;
-  kneeL: THREE.Group;
-  ankL: THREE.Group;
-  toeL: THREE.Group;
-  hipR: THREE.Group;
-  kneeR: THREE.Group;
-  ankR: THREE.Group;
-  toeR: THREE.Group;
+  hipL: THREE.Object3D;
+  kneeL: THREE.Object3D;
+  ankL: THREE.Object3D;
+  toeL: THREE.Object3D;
+  hipR: THREE.Object3D;
+  kneeR: THREE.Object3D;
+  ankR: THREE.Object3D;
+  toeR: THREE.Object3D;
 }
 
 export interface BuiltCharacter {
@@ -596,262 +599,6 @@ export interface BuiltCharacter {
   joints: CharacterJoints;
   registry: Registry;
   materials: MatSet;
-}
-
-const SHOULDER_Y = 0.24; // relatif au segment poitrine
-
-function buildArm(ctx: Ctx, side: 1 | -1, cfg: AvatarConfig) {
-  const sideName = side === -1 ? "g" : "d";
-  const R = 0.066; // rayon du bras (constant → tube lisse)
-  const clav = reg(ctx.registry, `clavicule.${sideName}`, new THREE.Group());
-  clav.position.set(0.1 * side, SHOULDER_Y, 0);
-
-  const sh = reg(ctx.registry, `epaule.${sideName}`, new THREE.Group());
-  sh.position.set(0.17 * side, 0, 0);
-  // épaule : sphère au rayon exact du bras → la jonction disparaît
-  sh.add(sphere(ctx, R, cfg.colors.top, "epaules"));
-  sh.add(limb(ctx, 0.32, R, cfg.colors.top, "epaules"));
-
-  const el = reg(ctx.registry, `coude.${sideName}`, new THREE.Group());
-  el.position.y = -0.32;
-  // coude : même rayon, même couleur → pli lisse invisible
-  el.add(sphere(ctx, R, cfg.colors.top, "epaules", 20, 16));
-  const forearm = reg(ctx.registry, `avant-bras.${sideName}`, new THREE.Group());
-  // manche puis poignet (léger fuselage vers la main)
-  forearm.add(limb(ctx, 0.22, R * 0.92, cfg.colors.top, "poignets"));
-  // poignet terracotta (comme la référence)
-  const cuff = torus(ctx, R * 0.92, 0.024, CLAY.accent);
-  cuff.rotation.x = Math.PI / 2;
-  cuff.position.y = -0.21;
-  forearm.add(cuff);
-  const wrist = sphere(ctx, 0.052, cfg.colors.skin, "poignets", 18, 12);
-  wrist.position.y = -0.25;
-  forearm.add(wrist);
-  const hand = buildHand(ctx, side, cfg.colors.skin, `main.${sideName}`);
-  hand.root.position.y = -0.28;
-  hand.root.scale.setScalar(1.15); // mains généreuses (comme la référence)
-  forearm.add(hand.root);
-  el.add(forearm);
-  sh.add(el);
-  clav.add(sh);
-
-  return { clav, sh, el, forearm, hand: hand.joints };
-}
-
-function buildLeg(ctx: Ctx, side: 1 | -1, cfg: AvatarConfig) {
-  const sideName = side === -1 ? "g" : "d";
-  const RT = 0.088; // cuisse
-  const RS = 0.078; // mollet
-  const hip = reg(ctx.registry, `hanche.${sideName}`, new THREE.Group());
-  hip.position.set(0.13 * side, -0.02, 0);
-  hip.add(sphere(ctx, RT, cfg.colors.trousers, "hanches", 20, 16));
-  hip.add(limb(ctx, 0.36, RT, cfg.colors.trousers, "hanches"));
-
-  const knee = reg(ctx.registry, `genou.${sideName}`, new THREE.Group());
-  knee.position.y = -0.36;
-  // genou : sphère au rayon du mollet → jonction lisse
-  knee.add(sphere(ctx, RS, cfg.colors.trousers, "jambes", 20, 16));
-  knee.add(limb(ctx, 0.32, RS, cfg.colors.trousers, "jambes"));
-  // bas de pantalon terracotta (comme la référence)
-  const hemCuff = torus(ctx, RS * 0.95, 0.026, CLAY.accent);
-  hemCuff.rotation.x = Math.PI / 2;
-  hemCuff.position.y = -0.3;
-  knee.add(hemCuff);
-
-  const ank = reg(ctx.registry, `cheville.${sideName}`, new THREE.Group());
-  ank.position.y = -0.34;
-  const foot = buildFoot(ctx, cfg.colors.shoes, `pied.${sideName}`);
-  ank.add(foot.root);
-  knee.add(ank);
-  hip.add(knee);
-
-  return { hip, knee, ank, toe: foot.toe };
-}
-
-export function buildCharacter(cfg: AvatarConfig): BuiltCharacter {
-  const ms = new MatSet();
-  const registry: Registry = new Map();
-  const ctx: Ctx = { ms, registry };
-
-  const root = reg(registry, "racine", new THREE.Group());
-  const pelvis = reg(registry, "bassin", new THREE.Group());
-
-  // bassin
-  const hips = sphere(ctx, 0.205, cfg.colors.trousers, "hanches");
-  hips.scale.set(1.05, 0.85, 0.9);
-  pelvis.add(hips);
-
-  const legL = buildLeg(ctx, -1, cfg);
-  const legR = buildLeg(ctx, 1, cfg);
-  pelvis.add(legL.hip, legR.hip);
-
-  // ---- colonne vertébrale en 3 segments ----
-  const spine1 = reg(registry, "colonne.lombaires", new THREE.Group());
-  spine1.position.y = 0.06;
-  const lower = sphere(ctx, 0.195, cfg.colors.top, "dos", 32, 22);
-  lower.scale.set(1.02, 0.8, 0.88);
-  lower.position.y = 0.05;
-  spine1.add(lower);
-  // ourlet du pull, terracotta (comme la référence)
-  const belt = torus(ctx, 0.198, 0.03, CLAY.accent);
-  belt.rotation.x = Math.PI / 2;
-  belt.position.y = -0.02;
-  spine1.add(belt);
-
-  const spine2 = reg(registry, "colonne.dorsales", new THREE.Group());
-  spine2.position.y = 0.14;
-  const mid = sphere(ctx, 0.2, cfg.colors.top, "dos", 32, 22);
-  mid.scale.set(1, 0.85, 0.9);
-  mid.position.y = 0.05;
-  spine2.add(mid);
-  spine1.add(spine2);
-
-  const chest = reg(registry, "colonne.poitrine", new THREE.Group());
-  chest.position.y = 0.15;
-  const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.205, 0.16, 10, 32), ms.mat(cfg.colors.top));
-  upper.position.y = 0.09;
-  upper.castShadow = true;
-  upper.userData.zone = "dos";
-  chest.add(upper);
-  spine2.add(chest);
-
-  // respiration thoracique + ventre
-  const chestBreath = reg(registry, "souffle.poitrine", new THREE.Group());
-  chestBreath.position.set(0, 0.12, 0.16);
-  const chestBall = sphere(ctx, 0.09, cfg.colors.top, "dos");
-  chestBreath.add(chestBall);
-  chest.add(chestBreath);
-
-  const belly = reg(registry, "souffle.ventre", new THREE.Group());
-  belly.position.set(0, 0.06, 0.16);
-  const bellyBall = sphere(ctx, 0.105, cfg.colors.top, "energie");
-  belly.add(bellyBall);
-  spine1.add(belly);
-
-  // col ras-du-cou (même sauge que le pull)
-  const collar = torus(ctx, 0.09, 0.03, cfg.colors.top);
-  collar.rotation.x = Math.PI / 2;
-  collar.position.y = 0.28;
-  chest.add(collar);
-
-  // écharpe
-  if (cfg.equipped.includes("echarpe-terracotta")) {
-    const scarf = torus(ctx, 0.13, 0.05, CLAY.accent);
-    scarf.rotation.x = Math.PI / 2 + 0.12;
-    scarf.position.y = 0.24;
-    chest.add(scarf);
-    const end = limb(ctx, 0.2, 0.045, CLAY.accent);
-    end.position.set(0.08, 0.06, 0.17);
-    chest.add(end);
-  }
-
-  // mésange sur l'épaule gauche
-  if (cfg.equipped.includes("oiseau-mesange")) {
-    const bird = new THREE.Group();
-    bird.position.set(-0.29, 0.31, 0.02);
-    const bodyB = sphere(ctx, 0.055, CLAY.bird);
-    bodyB.scale.set(0.9, 0.85, 1.15);
-    const headB = sphere(ctx, 0.038, CLAY.bird);
-    headB.position.set(0, 0.055, 0.035);
-    const bib = sphere(ctx, 0.03, CLAY.cream);
-    bib.position.set(0, 0.035, 0.05);
-    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.011, 0.03, 8), ms.mat(CLAY.accent));
-    beak.position.set(0, 0.055, 0.075);
-    beak.rotation.x = Math.PI / 2;
-    const tail = sphere(ctx, 0.02, CLAY.dark);
-    tail.scale.set(0.7, 0.5, 1.8);
-    tail.position.set(0, 0.02, -0.07);
-    bird.add(bodyB, headB, bib, beak, tail);
-    for (const s of [-1, 1] as const) {
-      const e = sphere(ctx, 0.006, CLAY.dark, undefined, 8, 6);
-      e.position.set(0.02 * s, 0.065, 0.06);
-      bird.add(e);
-    }
-    registry.set("compagnon.mesange", bird);
-    chest.add(bird);
-  }
-
-  // ---- bras (clavicule → épaule → coude → main) ----
-  const armL = buildArm(ctx, -1, cfg);
-  const armR = buildArm(ctx, 1, cfg);
-  chest.add(armL.clav, armR.clav);
-
-  // ---- cou en 2 segments ----
-  const neck1 = reg(registry, "cou.bas", new THREE.Group());
-  neck1.position.y = 0.3;
-  const neckMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.066, 0.085, 0.1, 20), ms.mat(cfg.colors.skin));
-  neckMesh.position.y = 0.03;
-  neckMesh.userData.zone = "nuque";
-  neck1.add(neckMesh);
-  const neck2 = reg(registry, "cou.haut", new THREE.Group());
-  neck2.position.y = 0.09;
-  const neckMesh2 = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.068, 0.07, 20), ms.mat(cfg.colors.skin));
-  neckMesh2.position.y = 0.02;
-  neckMesh2.userData.zone = "nuque";
-  neck2.add(neckMesh2);
-  neck1.add(neck2);
-  chest.add(neck1);
-
-  // ---- tête ----
-  const headBuilt = buildHead(ctx, cfg);
-  headBuilt.root.position.y = 0.22;
-  neck2.add(headBuilt.root);
-
-  for (const id of cfg.equipped) {
-    const acc = buildAccessory(ctx, id);
-    if (acc) headBuilt.root.add(acc);
-  }
-
-  pelvis.add(spine1);
-  root.add(pelvis);
-
-  return {
-    root,
-    registry,
-    materials: ms,
-    joints: {
-      root,
-      pelvis,
-      spine1,
-      spine2,
-      chest,
-      belly,
-      chestBreath,
-      clavL: armL.clav,
-      clavR: armR.clav,
-      neck1,
-      neck2,
-      head: headBuilt.root,
-      jaw: headBuilt.joints.jaw,
-      eyeL: headBuilt.joints.eyeL,
-      eyeR: headBuilt.joints.eyeR,
-      pupilL: headBuilt.joints.pupilL,
-      pupilR: headBuilt.joints.pupilR,
-      lidL: headBuilt.joints.lidL,
-      lidR: headBuilt.joints.lidR,
-      lidLowL: headBuilt.joints.lidLowL,
-      lidLowR: headBuilt.joints.lidLowR,
-      browL: headBuilt.joints.browL,
-      browR: headBuilt.joints.browR,
-      hairChain: headBuilt.joints.hairChain,
-      shL: armL.sh,
-      elL: armL.el,
-      forearmL: armL.forearm,
-      handL: armL.hand,
-      shR: armR.sh,
-      elR: armR.el,
-      forearmR: armR.forearm,
-      handR: armR.hand,
-      hipL: legL.hip,
-      kneeL: legL.knee,
-      ankL: legL.ank,
-      toeL: legL.toe,
-      hipR: legR.hip,
-      kneeR: legR.knee,
-      ankR: legR.ank,
-      toeR: legR.toe,
-    },
-  };
 }
 
 // Nombre d'articulations du squelette courant (affiché dans le menu).

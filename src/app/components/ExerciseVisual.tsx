@@ -17,7 +17,6 @@ export function ExerciseVisual({
 }: {
   motion: MotionId;
   size?: number;
-  animate?: boolean;
 }) {
   const zone = MOTIONS[motion].highlight;
   const store = useMovaeMaybe();
