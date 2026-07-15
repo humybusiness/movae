@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { hasBreathGuide, startBreathGuide, stopBreathGuide } from "../../lib/audio";
 import type { Exercise } from "../data/exercises";
-import { ExerciseFigure3D } from "./ExerciseFigure3D";
+import { ExerciseFigure } from "./ExerciseFigure";
 import { Chip, MButton } from "./ui";
 import { ZONE_COLORS, ZONE_LABELS } from "../types";
 import { formatDuration } from "../../lib/time";
@@ -298,7 +298,7 @@ export function BreakPlayer({
                     </>
                   ) : (
                     <>
-                      <ExerciseFigure3D motion={exercise.motion} size={116} animate={!paused} />
+                      <ExerciseFigure motion={exercise.motion} size={116} animate={!paused} />
                       <span className="font-display -mt-1 text-xl font-bold tabular-nums" aria-live="polite">
                         {remaining}s
                       </span>

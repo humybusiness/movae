@@ -9,7 +9,7 @@ import {
   SLOT_LABELS,
   type AccessoryCategory,
 } from "../data/accessories";
-import { CharacterStage, avatarConfig } from "../components/ExerciseFigure3D";
+import { ExerciseFigure } from "../components/ExerciseFigure";
 import { Chip, MButton, MCard, SectionTitle } from "../components/ui";
 import { HAIR_LABELS, type AvatarColors, type HairId } from "../types";
 
@@ -103,7 +103,7 @@ export function CharacterView() {
       <div className="grid gap-5 lg:grid-cols-[auto_1fr]">
         {/* Aperçu + personnalisation */}
         <MCard className="flex flex-col items-center gap-4 p-6">
-          <CharacterStage config={avatarConfig(avatar)} size={300} />
+          <ExerciseFigure motion="grow-tall" size={300} animate />
           <ElanBadge amount={avatar.clay} />
 
           {/* Coupes de cheveux (gratuites) */}

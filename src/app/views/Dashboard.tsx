@@ -33,7 +33,7 @@ import { tipOfDay } from "../data/tips";
 import { dayKey, formatClock, formatDuration } from "../../lib/time";
 import { BodyMap } from "../components/BodyMap";
 import { AvatarDesk } from "../components/AvatarDesk";
-import { ExerciseFigure3D } from "../components/ExerciseFigure3D";
+import { ExerciseFigure } from "../components/ExerciseFigure";
 import { ExerciseVisual } from "../components/ExerciseVisual";
 import { IndexVisual } from "../components/IndexVisual";
 import { Chip, MButton, MCard, ProgressBar } from "../components/ui";
@@ -255,7 +255,7 @@ export function Dashboard({
 
               <div className="mt-4 flex flex-1 flex-wrap items-center gap-6">
                 <div className="shrink-0 rounded-3xl bg-[var(--m-card)] p-2" style={{ boxShadow: "var(--m-shadow)" }}>
-                  <ExerciseFigure3D motion={proposed.motion} size={148} animate />
+                  <ExerciseFigure motion={proposed.motion} size={148} animate />
                 </div>
                 <div className="min-w-52 flex-1">
                   <h2 className="font-display text-3xl font-semibold leading-tight tracking-tight">

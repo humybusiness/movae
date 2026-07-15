@@ -1,210 +1,119 @@
-import { useMemo, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import * as THREE from "three";
-import {
-  applyPose,
-  ClayLights,
-  ClayRig,
-  GardenStage,
-  pelvisBaseY,
-  restPose,
-  swayHair,
-  useRigRefs,
-  rad,
-  type Pose3D,
-} from "./ClayCharacter";
-import { poseHand } from "./clayParts";
-import { avatarConfig } from "./ExerciseFigure3D";
+import { useEffect, useRef, useState } from "react";
 import { defaultAvatar, useMovaeMaybe } from "../state/store";
 
-// L'avatar à son poste de travail — scène vivante du dashboard.
-//
-// Assis à un bureau devant un ordinateur, il tape doucement au clavier et,
-// de temps en temps, boit une gorgée. Son jardin l'entoure. La scène est en
-// gros plan : c'est lui la vedette de la première page.
+// L'avatar 2D à son poste de travail — scène vivante du dashboard.
+// Assis au bureau devant son ordinateur : il tape au clavier et, toutes les
+// ~14 s, boit une gorgée. Couleurs et coupe = celles de l'avatar.
 
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const smooth = (t: number) => t * t * (3 - 2 * t);
+const ACCENT = "#C4795A", DARK = "#3A342C";
 
-function DeskProps() {
-  // bureau en bois clair + ordinateur portable + tasse
-  return (
-    <group>
-      {/* plateau */}
-      <mesh position={[0, 0.92, 0.46]} castShadow receiveShadow>
-        <boxGeometry args={[1.5, 0.05, 0.62]} />
-        <meshStandardMaterial color="#B99772" roughness={0.5} metalness={0.04} />
-      </mesh>
-      {/* pieds */}
-      {[
-        [-0.68, 0.62],
-        [0.68, 0.62],
-        [-0.68, 0.28],
-        [0.68, 0.28],
-      ].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.45, z]}>
-          <cylinderGeometry args={[0.028, 0.032, 0.92, 10]} />
-          <meshStandardMaterial color="#96784F" roughness={0.5} />
-        </mesh>
-      ))}
-      {/* ordinateur portable : base + écran incliné face à l'avatar */}
-      <group position={[0, 0.95, 0.5]}>
-        <mesh position={[0, 0.006, 0]} castShadow>
-          <boxGeometry args={[0.5, 0.02, 0.34]} />
-          <meshStandardMaterial color="#3A342C" roughness={0.35} metalness={0.1} />
-        </mesh>
-        {/* clavier clair */}
-        <mesh position={[0, 0.018, 0.02]}>
-          <boxGeometry args={[0.44, 0.004, 0.24]} />
-          <meshStandardMaterial color="#5E564D" roughness={0.6} />
-        </mesh>
-        {/* écran */}
-        <group position={[0, 0.02, -0.17]} rotation={[rad(-102), 0, 0]}>
-          <mesh position={[0, 0.17, 0]} castShadow>
-            <boxGeometry args={[0.5, 0.34, 0.02]} />
-            <meshStandardMaterial color="#3A342C" roughness={0.35} metalness={0.1} />
-          </mesh>
-          <mesh position={[0, 0.17, 0.012]}>
-            <planeGeometry args={[0.44, 0.28]} />
-            <meshStandardMaterial color="#8FB7C9" emissive="#8FB7C9" emissiveIntensity={0.35} roughness={0.3} />
-          </mesh>
-        </group>
-      </group>
-    </group>
-  );
-}
-
-function Mug({ mugRef }: { mugRef: React.RefObject<THREE.Group | null> }) {
-  return (
-    <group ref={mugRef} position={[0.42, 0.99, 0.42]}>
-      <mesh castShadow>
-        <cylinderGeometry args={[0.055, 0.045, 0.1, 16]} />
-        <meshStandardMaterial color="#C4795A" roughness={0.45} metalness={0.04} />
-      </mesh>
-      <mesh position={[0.066, 0, 0]}>
-        <torusGeometry args={[0.026, 0.01, 8, 14]} />
-        <meshStandardMaterial color="#C4795A" roughness={0.45} />
-      </mesh>
-      <mesh position={[0, 0.052, 0]}>
-        <cylinderGeometry args={[0.046, 0.046, 0.006, 16]} />
-        <meshStandardMaterial color="#5E4433" roughness={0.6} />
-      </mesh>
-    </group>
-  );
-}
-
-function DeskScene() {
+export function AvatarDesk({ height = 300 }: { height?: number }) {
   const store = useMovaeMaybe();
-  const avatar = store?.state.avatar ?? defaultAvatar();
-  const config = avatarConfig(avatar);
-  const refs = useRigRefs();
-  const mugRef = useRef<THREE.Group>(null);
+  const a = store?.state.avatar ?? defaultAvatar();
+  const c = a.colors;
+  const [t, setT] = useState(0);
   const reduced = useRef(
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
-  const baseY = pelvisBaseY(false);
 
-  // pose assise « au travail » : penché vers l'écran, avant-bras vers le bureau
-  const work = useMemo<Pose3D>(() => {
-    const b = restPose(false);
-    return {
-      ...b,
-      torsoTilt: 7,
-      headTilt: 9,
-      armL: { fwd: 60, abd: 9, elbowFwd: 84, elbowAbd: 0 },
-      armR: { fwd: 60, abd: 9, elbowFwd: 84, elbowAbd: 0 },
+  useEffect(() => {
+    if (reduced.current) return;
+    let raf = 0;
+    const t0 = performance.now();
+    const loop = (now: number) => {
+      setT((now - t0) / 1000);
+      raf = requestAnimationFrame(loop);
     };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
   }, []);
 
-  useFrame((state) => {
-    const t = state.clock.getElapsedTime();
-    const joints = refs.joints.current;
+  // cycle : 11 s de frappe, 3 s pour boire
+  const cyc = t % 14;
+  const dRaw = cyc > 11 ? (cyc - 11) / 3 : 0;
+  const drink = dRaw === 0 ? 0 : dRaw < 0.5 ? dRaw * 2 : (1 - dRaw) * 2;
+  const smooth = drink * drink * (3 - 2 * drink);
+  const tap = Math.abs(Math.sin(t * 9)) * 2.2;
+  const breath = Math.sin(t * 1.2) * 0.8;
 
-    // cycle de 15 s : ~11 s de frappe, ~4 s pour boire
-    const cyc = t % 15;
-    const drinking = cyc > 11 && !reduced.current;
-    // 0→1→0 sur la fenêtre de boisson (approche, gorgée, retour)
-    const dRaw = drinking ? (cyc - 11) / 4 : 0;
-    const drink = smooth(dRaw < 0.5 ? dRaw * 2 : (1 - dRaw) * 2);
-
-    const pose: Pose3D = { ...work };
-    // regard qui balaie légèrement l'écran
-    pose.gazeX = Math.sin(t * 0.7) * 0.25;
-
-    if (drink > 0) {
-      // bras droit porte la tasse à la bouche, tête qui bascule un peu
-      pose.armR = {
-        fwd: lerp(60, 116, drink),
-        abd: lerp(9, 4, drink),
-        elbowFwd: lerp(84, 138, drink),
-        elbowAbd: 0,
-      };
-      pose.headTilt = lerp(9, -6, drink);
-      pose.torsoTilt = lerp(7, 2, drink);
-    }
-
-    // clignements
-    let blink = 1;
-    if (!reduced.current) {
-      const b = (t + 0.6) % 4.2;
-      if (b < 0.13) blink = 0.1;
-    }
-
-    applyPose(refs, pose, baseY, blink);
-    if (!reduced.current) swayHair(refs, t);
-
-    // frappe clavier : les doigts pianotent quand on ne boit pas
-    if (joints && !reduced.current) {
-      if (drink < 0.05) {
-        const tapL = 0.12 + Math.abs(Math.sin(t * 7.0)) * 0.5;
-        const tapR = 0.12 + Math.abs(Math.sin(t * 7.0 + 1.7)) * 0.5;
-        poseHand(joints.handL, tapL);
-        poseHand(joints.handR, tapR);
-      } else {
-        poseHand(joints.handL, 0.15);
-        poseHand(joints.handR, 0.55); // main qui tient la tasse
-      }
-    }
-
-    // la tasse suit la main droite quand il boit, sinon reste sur le bureau
-    if (mugRef.current && joints) {
-      if (drink > 0.15) {
-        const hand = joints.handR;
-        const p = new THREE.Vector3();
-        hand.wrist.getWorldPosition(p);
-        mugRef.current.position.lerp(p, 0.5);
-        mugRef.current.rotation.z = -drink * 0.6;
-      } else {
-        mugRef.current.position.lerp(new THREE.Vector3(0.42, 0.99, 0.42), 0.2);
-        mugRef.current.rotation.z = 0;
-      }
-    }
-  });
+  // repères (viewBox 0 0 220 130) — perso de profil, face au bureau à droite
+  const hipX = 84, hipY = 88;
+  const shX = hipX + 3, shY = hipY - 27 + breath * 0.4;
+  const headX = shX + 3, headY = shY - 12;
+  // bras qui tape : main sur le clavier ; bras qui boit : main → bouche
+  const handTap = { x: 118, y: 74 - tap * 0.4 };
+  const drinkHand = {
+    x: shX + 14 - smooth * 8,
+    y: shY + 18 - smooth * 26,
+  };
+  const elbowFor = (hx: number, hy: number) => ({ x: (shX + hx) / 2 - 2, y: (shY + hy) / 2 + 6 });
+  const eT = elbowFor(handTap.x, handTap.y);
+  const eD = elbowFor(drinkHand.x, drinkHand.y);
+  const mug = smooth > 0.1 ? drinkHand : { x: 132, y: 71 };
 
   return (
-    <group position={[0, -0.62, 0]}>
-      <ClayLights />
-      <group rotation={[0, rad(-8), 0]}>
-        <ClayRig refs={refs} config={config} />
-        <GardenStage equipped={avatar.equipped} seated />
-        <DeskProps />
-        <Mug mugRef={mugRef} />
-      </group>
-    </group>
-  );
-}
-
-export function AvatarDesk({ height = 300 }: { height?: number }) {
-  return (
-    <div style={{ width: "100%", height }}>
-      <Canvas
-        gl={{ alpha: true, antialias: true }}
-        camera={{ position: [0.15, 0.75, 2.55], fov: 32 }}
-        dpr={[1, 2]}
-        style={{ width: "100%", height: "100%", display: "block" }}
-      >
-        <DeskScene />
-      </Canvas>
-    </div>
+    <svg viewBox="0 0 220 130" style={{ width: "100%", height, display: "block" }} aria-hidden>
+      {/* sol + chaise */}
+      <ellipse cx={110} cy={122} rx={88} ry={5} fill="var(--m-ink)" opacity={0.06} />
+      <g stroke="var(--m-ink2)" strokeWidth={4} strokeLinecap="round" opacity={0.5} fill="none">
+        <path d={`M${hipX - 14} ${hipY + 4} h26`} />
+        <path d={`M${hipX - 13} ${hipY + 4} v-26`} />
+        <path d={`M${hipX - 9} ${hipY + 4} v28`} />
+        <path d={`M${hipX + 9} ${hipY + 4} v28`} />
+      </g>
+      {/* bureau + laptop + tasse */}
+      <g>
+        <rect x={104} y={76} width={86} height={5} rx={2.5} fill="#B99772" stroke={DARK} strokeWidth={0.6} />
+        <path d="M110 81 v38 M184 81 v38" stroke="#96784F" strokeWidth={4} strokeLinecap="round" />
+        <rect x={126} y={57} width={26} height={17} rx={2} fill={DARK} />
+        <rect x={128} y={59} width={22} height={13} rx={1} fill="#8FB7C9" opacity={0.9} />
+        <rect x={112} y={73.4} width={22} height={3} rx={1.5} fill="#5E564D" />
+        {/* tasse (suit la main quand il boit) */}
+        <g transform={`translate(${mug.x - 132} ${mug.y - 71}) ${smooth > 0.1 ? `rotate(${-smooth * 24} 132 71)` : ""}`}>
+          <rect x={128} y={64} width={9} height={11} rx={2} fill={ACCENT} stroke={DARK} strokeWidth={0.6} />
+          <path d="M137 67 a 3 3 0 1 1 0 5" stroke={ACCENT} strokeWidth={1.6} fill="none" />
+        </g>
+      </g>
+      {/* jambes */}
+      <path d={`M${hipX} ${hipY} L${hipX + 22} ${hipY - 2} L${hipX + 24} ${hipY + 22}`}
+        stroke={c.trousers} strokeWidth={7} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <ellipse cx={hipX + 28} cy={hipY + 24} rx={6} ry={3.4} fill={c.shoes} />
+      {/* torse */}
+      <path d={`M${hipX - 6} ${hipY + 2} Q ${hipX - 8} ${shY + 6} ${shX - 5} ${shY - 3}
+          Q ${shX} ${shY - 5.5} ${shX + 5} ${shY - 2.5} Q ${shX + 9 + breath} ${(shY + hipY) / 2} ${hipX + 7} ${hipY + 2} Z`}
+        fill={c.top} stroke={DARK} strokeWidth={0.6} />
+      <path d={`M${hipX - 6} ${hipY + 1.6} Q ${hipX} ${hipY + 4} ${hipX + 7} ${hipY + 1.6}`} stroke={ACCENT} strokeWidth={1.6} fill="none" strokeLinecap="round" />
+      {/* bras gauche (fond, tape toujours) */}
+      <g opacity={0.5}>
+        <path d={`M${shX - 2} ${shY} L${eT.x - 4} ${eT.y} L${handTap.x - 6} ${handTap.y + tap * 0.3}`}
+          stroke={c.top} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <circle cx={handTap.x - 6} cy={handTap.y + tap * 0.3} r={2.4} fill={c.skin} />
+      </g>
+      {/* cou + tête */}
+      <path d={`M${shX} ${shY} L${headX} ${headY + 7}`} stroke={c.skin} strokeWidth={4.4} strokeLinecap="round" />
+      <g transform={smooth > 0.1 ? `rotate(${-smooth * 10} ${headX} ${headY})` : undefined}>
+        <circle cx={headX} cy={headY} r={8.5} fill={c.skin} stroke={DARK} strokeWidth={0.6} />
+        <path d={`M${headX - 9} ${headY + 1.5} A 9.3 9.3 0 0 1 ${headX + 7} ${headY - 5.4} Q ${headX + 2} ${headY - 2} ${headX - 1.6} ${headY - 4} Q ${headX - 7.6} ${headY - 1} ${headX - 9} ${headY + 1.5} Z`} fill={c.hair} />
+        <ellipse cx={headX + 3.6} cy={headY - 0.6} rx={1.1} ry={1.6} fill={DARK} />
+        <path d={`M${headX + 2} ${headY - 3.4} q 2 -1 3.6 -0.2`} stroke={c.hair} strokeWidth={0.9} strokeLinecap="round" fill="none" />
+        <path d={`M${headX + 7.9} ${headY + 0.6} q 2 0.9 0.6 2.6 q -1 0.8 -1.8 0.2`} fill={c.skin} stroke={DARK} strokeWidth={0.5} />
+        <path d={`M${headX + 5.2} ${headY + 3.6} q 1.4 0.7 2.4 -0.2`} stroke={DARK} strokeWidth={0.7} strokeLinecap="round" fill="none" />
+        <circle cx={headX + 3.4} cy={headY + 2.8} r={1.1} fill="#E4A78D" opacity={0.5} />
+      </g>
+      {/* bras droit (premier plan : tape ou boit) */}
+      {smooth > 0.05 ? (
+        <g>
+          <path d={`M${shX + 2} ${shY + 1} L${eD.x} ${eD.y} L${drinkHand.x} ${drinkHand.y}`}
+            stroke={c.top} strokeWidth={5.6} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          <circle cx={drinkHand.x} cy={drinkHand.y} r={2.7} fill={c.skin} stroke={DARK} strokeWidth={0.5} />
+        </g>
+      ) : (
+        <g>
+          <path d={`M${shX + 2} ${shY + 1} L${eT.x} ${eT.y} L${handTap.x} ${handTap.y}`}
+            stroke={c.top} strokeWidth={5.6} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          <circle cx={handTap.x} cy={handTap.y} r={2.7} fill={c.skin} stroke={DARK} strokeWidth={0.5} />
+        </g>
+      )}
+    </svg>
   );
 }
