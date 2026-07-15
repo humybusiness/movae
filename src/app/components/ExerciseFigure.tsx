@@ -9,26 +9,23 @@ import {
   type MotionId,
   type SidePose,
 } from "../data/motions";
+import { circle, ellipse, seg, unionPath, type P } from "./outline";
 import { defaultAvatar, useMovaeMaybe } from "../state/store";
 import type { AvatarColors, HairId } from "../types";
 
 // ============================================================================
-// Le personnage 2D Movaé — dessiné, habillé, articulé.
+// Le personnage 2D Movaé — un seul trait.
 //
-// Un vrai personnage vectoriel (pull sauge, pantalon, chaussures, visage
-// détaillé, mains à doigts) piloté par les mêmes articulations que motions.ts :
-// bassin, colonne, cou, épaules, coudes, poignets, hanches, genoux, chevilles.
-// Quatre cadrages : profil, face, gros plan visage (yeux), gros plan main
-// (poignets/doigts) — l'exercice se comprend sans lire la consigne.
-// Les couleurs (peau, cheveux, haut, pantalon, chaussures) et la coupe suivent
-// l'avatar de l'utilisateur ; les accessoires portés sont dessinés.
+// Le corps n'est plus une superposition de formes : chaque volume (torse,
+// membres, tête, mains, chaussures) est fusionné par union booléenne, et UNE
+// seule ligne lissée entoure l'ensemble. Les couleurs sont des aplats posés
+// sous ce contour. Piloté par les articulations de motions.ts ; quatre
+// cadrages (profil, face, visage, main) ; couleurs/coupe/accessoires = avatar.
 // ============================================================================
 
 const rad = (d: number) => (d * Math.PI) / 180;
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
-
-type P = { x: number; y: number };
 
 interface Look {
   colors: AvatarColors;
@@ -39,6 +36,7 @@ interface Look {
 const ACCENT = "#C4795A";
 const DARK = "#3A342C";
 const BLUSH = "#E4A78D";
+const INK_W = 1.15; // épaisseur du trait unique
 
 function useLook(): Look {
   const store = useMovaeMaybe();
@@ -122,7 +120,7 @@ function lerpFront(a: FullFront, b: FullFront, t: number): FullFront {
 const TORSO_L = 27, NECK = 5, HEAD_R = 8.5, UA = 13, FA = 12, THIGH = 23, SHIN = 25, FOOT = 8;
 
 interface SideJoints {
-  pelvis: P; shoulder: P; headC: P; headA: number;
+  pelvis: P; shoulder: P; headC: P;
   elbowN: P | null; handN: P | null; handAN: number;
   elbowF: P | null; handF: P | null; handAF: number;
   kneeN: P; ankleN: P; toeN: P; kneeF: P; ankleF: P; toeF: P;
@@ -166,7 +164,7 @@ function solveSide(pose: FullSide, stand: boolean): SideJoints {
     y: pelvis.y + (shoulder.y - pelvis.y) * 0.42,
   };
   return {
-    pelvis, shoulder, headC, headA: pose.torso + pose.head,
+    pelvis, shoulder, headC,
     elbowN: nA.elbow, handN: nA.hand, handAN: nA.a,
     elbowF: fA.elbow, handF: fA.hand, handAF: fA.a,
     kneeN: nL.knee, ankleN: nL.ankle, toeN: nL.toe,
@@ -177,48 +175,54 @@ function solveSide(pose: FullSide, stand: boolean): SideJoints {
 
 const L = (a: P, b: P) => `M${a.x.toFixed(1)} ${a.y.toFixed(1)} L${b.x.toFixed(1)} ${b.y.toFixed(1)}`;
 
-// ---------- Pièces dessinées ----------
+// Aplat de membre : segment épais à bouts ronds, SANS contour propre.
+function Flat({ a, b, w, color, o = 1 }: { a: P; b: P; w: number; color: string; o?: number }) {
+  return <path d={L(a, b)} stroke={color} strokeWidth={w} strokeLinecap="round" fill="none" opacity={o} />;
+}
 
-// Main de profil : paume + 3 doigts orientés dans l'axe de l'avant-bras.
-function SideHand({ p, a, skin }: { p: P; a: number; skin: string }) {
+// ---------- Pièces dessinées (aplats + détails, le trait vient de l'union) ----------
+
+function shoeGeom(ankle: P, toe: P) {
+  const a = (Math.atan2(toe.y - ankle.y, toe.x - ankle.x) * 180) / Math.PI;
+  const c = { x: (ankle.x + toe.x) / 2 + 1.2, y: (ankle.y + toe.y) / 2 + 0.8 };
+  return { c, a, rx: 6.6, ry: 3 };
+}
+
+function SideHandFingers({ p, a, skin }: { p: P; a: number; skin: string }) {
   const dx = Math.sin(rad(a)), dy = Math.cos(rad(a));
   return (
     <g>
-      <circle cx={p.x} cy={p.y} r={2.7} fill={skin} />
       {[-0.55, 0, 0.55].map((o) => (
         <path key={o}
-          d={`M${p.x} ${p.y} l${(dx * 3.6 - dy * o * 1.3).toFixed(1)} ${(dy * 3.6 + dx * o * 1.3).toFixed(1)}`}
+          d={`M${p.x} ${p.y} l${(dx * 3.4 - dy * o * 1.3).toFixed(1)} ${(dy * 3.4 + dx * o * 1.3).toFixed(1)}`}
           stroke={skin} strokeWidth={1.5} strokeLinecap="round" fill="none" />
       ))}
     </g>
   );
 }
 
-// Chaussure de profil, orientée avec le pied.
-function Shoe({ ankle, toe, shoes }: { ankle: P; toe: P; shoes: string }) {
-  const a = Math.atan2(toe.y - ankle.y, toe.x - ankle.x) * (180 / Math.PI);
-  return (
-    <g transform={`rotate(${a.toFixed(1)} ${ankle.x} ${ankle.y})`}>
-      <path
-        d={`M${ankle.x - 2.4} ${ankle.y - 2.2} q -1 3.4 1 4.6 l ${FOOT + 2.6} 0 q 2 -0.4 1.2 -2.4 q -0.8 -2 -4 -2.4 z`}
-        fill={shoes} stroke={DARK} strokeWidth={0.5} strokeLinejoin="round" />
-      <path d={`M${ankle.x - 1.6} ${ankle.y + 2.6} l ${FOOT + 3.4} 0`} stroke="#EAE2D2" strokeWidth={1.1} strokeLinecap="round" />
-    </g>
-  );
+// Volumes de cheveux à inclure dans le contour unifié (profil).
+function sideHairRings(c: P, hair: HairId) {
+  const r = HEAD_R;
+  if (hair === "chignon") return [circle({ x: c.x - r - 0.8, y: c.y - 3.5 }, 3.1)];
+  if (hair === "queue") return [seg({ x: c.x - r + 1, y: c.y - 3 }, { x: c.x - r - 2.6, y: c.y + 6.5 }, 2.2, 1.5)];
+  if (hair === "mi-long") return [seg({ x: c.x - r + 1.4, y: c.y }, { x: c.x - r + 1.8, y: c.y + 7.5 }, 2.6, 2)];
+  if (hair === "boucles")
+    return [circle({ x: c.x - 2, y: c.y - r }, 3.2), circle({ x: c.x + 4, y: c.y - r + 1.2 }, 2.8), circle({ x: c.x - r + 1, y: c.y - r + 3 }, 3)];
+  return [];
 }
 
-// Cheveux de profil selon la coupe.
-function SideHair({ c, hair, color }: { c: P; hair: HairId; color: string }) {
+function SideHairFill({ c, hair, color }: { c: P; hair: HairId; color: string }) {
   const r = HEAD_R;
   if (hair === "ras")
     return <path d={`M${c.x - r} ${c.y - 1} A ${r} ${r} 0 0 1 ${c.x + r * 0.72} ${c.y - r * 0.68} L ${c.x - r * 0.5} ${c.y - r * 0.2} Z`} fill={color} opacity={0.9} />;
-  const cap = `M${c.x - r - 0.6} ${c.y + 1.5} A ${r + 0.8} ${r + 0.8} 0 0 1 ${c.x + r * 0.8} ${c.y - r * 0.62} Q ${c.x + 2} ${c.y - r * 0.2} ${c.x - r * 0.2} ${c.y - r * 0.45} Q ${c.x - r * 0.9} ${c.y - r * 0.1} ${c.x - r - 0.6} ${c.y + 1.5} Z`;
+  const cap = `M${c.x - r - 0.3} ${c.y + 1.5} A ${r + 0.4} ${r + 0.4} 0 0 1 ${c.x + r * 0.8} ${c.y - r * 0.62} Q ${c.x + 2} ${c.y - r * 0.2} ${c.x - r * 0.2} ${c.y - r * 0.45} Q ${c.x - r * 0.9} ${c.y - r * 0.1} ${c.x - r - 0.3} ${c.y + 1.5} Z`;
   return (
     <g fill={color}>
       <path d={cap} />
-      {hair === "mi-long" && <path d={`M${c.x - r - 0.5} ${c.y} q -1.6 6.5 1.2 9.5 q 2.4 1 2.6 -1 q -1.8 -4 -0.8 -8 Z`} />}
-      {hair === "chignon" && <circle cx={c.x - r - 1} cy={c.y - 3.5} r={3.1} />}
-      {hair === "queue" && <path d={`M${c.x - r} ${c.y - 3.5} q -5 3 -4.2 10.5 q 1.5 1.6 2.6 0.2 q -0.8 -6 1.6 -9 Z`} />}
+      {hair === "mi-long" && <path d={`M${c.x - r - 0.8} ${c.y - 1} q -1.4 6 0.6 9.5 q 2.4 1 2.8 -1 q -1.6 -4.5 -0.6 -8 Z`} />}
+      {hair === "chignon" && <circle cx={c.x - r - 0.8} cy={c.y - 3.5} r={3.1} />}
+      {hair === "queue" && <path d={`M${c.x - r + 1} ${c.y - 4} q -5.4 3.5 -4.4 11 q 1.6 1.6 2.8 0.2 q -0.8 -6 1.8 -9.4 Z`} />}
       {hair === "boucles" && (
         <g>
           <circle cx={c.x - 2} cy={c.y - r} r={3.4} />
@@ -230,23 +234,17 @@ function SideHair({ c, hair, color }: { c: P; hair: HairId; color: string }) {
   );
 }
 
-// Tête de profil : visage détaillé (œil amande, sourcil, nez, bouche, oreille).
-function SideHead({ c, a, look, gazeY = 0 }: { c: P; a: number; look: Look; gazeY?: number }) {
+// Visage profil (détails posés PAR-DESSUS le trait unique).
+function SideFace({ c, look, gazeY = 0 }: { c: P; look: Look; gazeY?: number }) {
   const { colors, equipped } = look;
   return (
-    <g transform={a !== 0 ? `rotate(${a.toFixed(1)} ${c.x} ${c.y})` : undefined}>
-      <circle cx={c.x} cy={c.y} r={HEAD_R} fill={colors.skin} stroke={DARK} strokeWidth={0.5} />
-      {/* nez */}
-      <path d={`M${c.x + HEAD_R - 0.6} ${c.y + 0.6} q 2 0.9 0.6 2.6 q -1 0.8 -1.8 0.2`} fill={colors.skin} stroke={DARK} strokeWidth={0.5} />
-      <SideHair c={c} hair={look.hair} color={colors.hair} />
-      {/* œil amande + sourcil */}
+    <g>
       <ellipse cx={c.x + 3.6} cy={c.y - 0.6 + gazeY} rx={1.15} ry={1.6} fill={DARK} />
       <path d={`M${c.x + 2} ${c.y - 3.4} q 2 -1.1 3.6 -0.2`} stroke={colors.hair} strokeWidth={0.9} strokeLinecap="round" fill="none" />
-      {/* bouche + joue + oreille */}
-      <path d={`M${c.x + 5.2} ${c.y + 3.4} q 1.4 0.7 2.4 -0.2`} stroke={DARK} strokeWidth={0.7} strokeLinecap="round" fill="none" />
-      <circle cx={c.x + 3.4} cy={c.y + 2.8} r={1.1} fill={BLUSH} opacity={0.5} />
-      <path d={`M${c.x - 1.2} ${c.y + 0.4} a 1.7 1.7 0 1 0 0.2 -0.1`} fill={colors.skin} stroke={DARK} strokeWidth={0.45} />
-      {/* accessoires */}
+      <path d={`M${c.x + HEAD_R - 1.2} ${c.y + 0.4} q 1.5 0.8 0.5 2.2`} stroke={DARK} strokeWidth={0.6} strokeLinecap="round" fill="none" />
+      <path d={`M${c.x + 4.8} ${c.y + 3.6} q 1.4 0.7 2.4 -0.2`} stroke={DARK} strokeWidth={0.7} strokeLinecap="round" fill="none" />
+      <circle cx={c.x + 3.2} cy={c.y + 2.8} r={1.1} fill={BLUSH} opacity={0.5} />
+      <path d={`M${c.x - 1.4} ${c.y + 0.2} a 1.6 1.6 0 1 0 0.2 -0.1`} fill="none" stroke={DARK} strokeWidth={0.5} />
       {equipped.includes("lunettes-rondes") && (
         <g stroke={DARK} strokeWidth={0.8} fill="none">
           <circle cx={c.x + 4.4} cy={c.y - 0.6} r={2.4} />
@@ -254,9 +252,7 @@ function SideHead({ c, a, look, gazeY = 0 }: { c: P; a: number; look: Look; gaze
         </g>
       )}
       {equipped.includes("bob-sable") && (
-        <g fill="#E9E0CE" stroke={DARK} strokeWidth={0.5}>
-          <path d={`M${c.x - HEAD_R - 2} ${c.y - 4} q ${HEAD_R + 2} -8.5 ${2 * HEAD_R + 3.4} -0.6 q 1.8 1.6 -0.6 1.8 l -${2 * HEAD_R + 2.4} 0.6 q -2.4 -0.2 -0.8 -1.8`} />
-        </g>
+        <path d={`M${c.x - HEAD_R - 2} ${c.y - 4} q ${HEAD_R + 2} -8.5 ${2 * HEAD_R + 3.4} -0.6 q 1.8 1.6 -0.6 1.8 l -${2 * HEAD_R + 2.4} 0.6 q -2.4 -0.2 -0.8 -1.8`} fill="#E9E0CE" stroke={DARK} strokeWidth={0.6} />
       )}
       {equipped.includes("casque-audio") && (
         <g>
@@ -273,8 +269,8 @@ function SideHead({ c, a, look, gazeY = 0 }: { c: P; a: number; look: Look; gaze
   );
 }
 
-// Torse habillé de profil : forme pleine lissée + ourlet.
-function SideTorso({ j, belly, top }: { j: SideJoints; belly: number; top: string }) {
+// Torse habillé de profil (aplat, sans contour).
+function SideTorsoFill({ j, belly, top }: { j: SideJoints; belly: number; top: string }) {
   const p = j.pelvis, s = j.shoulder;
   const bx = j.belly.x + 3 + belly * 2.2, by = j.belly.y;
   const back = { x: p.x + (s.x - p.x) * 0.5 - 6.2, y: p.y + (s.y - p.y) * 0.5 };
@@ -284,18 +280,8 @@ function SideTorso({ j, belly, top }: { j: SideJoints; belly: number; top: strin
         d={`M${p.x - 6} ${p.y + 3.5} Q ${back.x} ${back.y} ${s.x - 5} ${s.y - 3}
             Q ${s.x} ${s.y - 5.4} ${s.x + 5} ${s.y - 2.6}
             Q ${bx} ${by} ${p.x + 6.5} ${p.y + 3.5} Z`}
-        fill={top} stroke={DARK} strokeWidth={0.55} strokeLinejoin="round" />
+        fill={top} />
       <path d={`M${p.x - 6} ${p.y + 3.2} Q ${p.x} ${p.y + 5.4} ${p.x + 6.5} ${p.y + 3.2}`} stroke={ACCENT} strokeWidth={1.6} fill="none" strokeLinecap="round" />
-    </g>
-  );
-}
-
-// Membre : segment épais à bouts ronds (contour fin), sans jonction visible.
-function Limb({ a, b, w, color, outline = true }: { a: P; b: P; w: number; color: string; outline?: boolean }) {
-  return (
-    <g>
-      {outline && <path d={L(a, b)} stroke={DARK} strokeWidth={w + 1} strokeLinecap="round" fill="none" opacity={0.85} />}
-      <path d={L(a, b)} stroke={color} strokeWidth={w} strokeLinecap="round" fill="none" />
     </g>
   );
 }
@@ -307,47 +293,78 @@ function SideBody({ pose, stand, target, look }: { pose: FullSide; stand: boolea
   const wristN = j.elbowN && j.handN
     ? { x: j.handN.x - (j.handN.x - j.elbowN.x) * 0.22, y: j.handN.y - (j.handN.y - j.elbowN.y) * 0.22 }
     : null;
+
+  // ----- volumes du contour unifié -----
+  const shoeN = shoeGeom(j.ankleN, j.toeN);
+  const shoeF = shoeGeom(j.ankleF, j.toeF);
+  const near = [
+    seg(j.pelvis, j.shoulder, 6.4, 5.2),
+    seg(j.shoulder, j.headC, 2.5, 3),
+    circle(j.headC, HEAD_R + 0.2),
+    ...sideHairRings(j.headC, look.hair),
+    seg(j.pelvis, j.kneeN, 3.7, 3.4),
+    seg(j.kneeN, j.ankleN, 3.2, 2.8),
+    ellipse(shoeN.c, shoeN.rx, shoeN.ry, shoeN.a),
+  ];
+  if (pose.belly > 0.02) near.push(circle({ x: j.belly.x + 2.4, y: j.belly.y }, 4.6 + pose.belly * 2.6));
+  if (j.elbowN && j.handN) {
+    near.push(seg(j.shoulder, j.elbowN, 3, 2.6), seg(j.elbowN, j.handN, 2.5, 2.2), circle(j.handN, 2.7));
+  }
+  const far: typeof near = [
+    seg(j.pelvis, j.kneeF, 3.4, 3.1),
+    seg(j.kneeF, j.ankleF, 2.9, 2.6),
+    ellipse(shoeF.c, shoeF.rx, shoeF.ry, shoeF.a),
+  ];
+  if (j.elbowF && j.handF) {
+    far.push(seg(j.shoulder, j.elbowF, 2.7, 2.4), seg(j.elbowF, j.handF, 2.3, 2), circle(j.handF, 2.5));
+  }
+
   return (
     <g>
-      {/* membres éloignés, assombris */}
-      <g opacity={0.45}>
-        <Limb a={j.pelvis} b={j.kneeF} w={6.5} color={colors.trousers} />
-        <Limb a={j.kneeF} b={j.ankleF} w={5.8} color={colors.trousers} />
-        <Shoe ankle={j.ankleF} toe={j.toeF} shoes={colors.shoes} />
+      {/* ----- côté éloigné : aplats assombris + son propre trait fin ----- */}
+      <g opacity={0.4}>
+        <Flat a={j.pelvis} b={j.kneeF} w={6.6} color={colors.trousers} />
+        <Flat a={j.kneeF} b={j.ankleF} w={5.6} color={colors.trousers} />
+        <ellipse cx={shoeF.c.x} cy={shoeF.c.y} rx={shoeF.rx - 0.4} ry={shoeF.ry - 0.3} transform={`rotate(${shoeF.a} ${shoeF.c.x} ${shoeF.c.y})`} fill={colors.shoes} />
         {j.elbowF && j.handF && (
           <g>
-            <Limb a={j.shoulder} b={j.elbowF} w={5} color={colors.top} />
-            <Limb a={j.elbowF} b={j.handF} w={4.2} color={colors.skin} />
-            <SideHand p={j.handF} a={j.handAF} skin={colors.skin} />
+            <Flat a={j.shoulder} b={j.elbowF} w={5.2} color={colors.top} />
+            <Flat a={j.elbowF} b={j.handF} w={4.4} color={colors.skin} />
+            <circle cx={j.handF.x} cy={j.handF.y} r={2.5} fill={colors.skin} />
           </g>
         )}
+        <path d={unionPath(far)} stroke={DARK} strokeWidth={0.9} fill="none" strokeLinejoin="round" />
       </g>
-      {/* torse + jambe proche */}
-      <SideTorso j={j} belly={pose.belly} top={colors.top} />
-      <Limb a={j.pelvis} b={j.kneeN} w={7} color={colors.trousers} />
-      <Limb a={j.kneeN} b={j.ankleN} w={6} color={colors.trousers} />
-      {/* ourlet terracotta à la cheville */}
+
+      {/* ----- aplats du côté proche ----- */}
+      <SideTorsoFill j={j} belly={pose.belly} top={colors.top} />
+      <Flat a={j.pelvis} b={j.kneeN} w={7} color={colors.trousers} />
+      <Flat a={j.kneeN} b={j.ankleN} w={6} color={colors.trousers} />
       <circle cx={j.ankleN.x} cy={j.ankleN.y} r={2.6} fill={ACCENT} />
-      <Shoe ankle={j.ankleN} toe={j.toeN} shoes={colors.shoes} />
-      {/* cou + tête */}
+      <ellipse cx={shoeN.c.x} cy={shoeN.c.y} rx={shoeN.rx - 0.3} ry={shoeN.ry - 0.2} transform={`rotate(${shoeN.a} ${shoeN.c.x} ${shoeN.c.y})`} fill={colors.shoes} />
       <path d={L(j.shoulder, { x: (j.shoulder.x + j.headC.x) / 2, y: (j.shoulder.y + j.headC.y) / 2 })}
         stroke={colors.skin} strokeWidth={4.6} strokeLinecap="round" fill="none" />
-      <SideHead c={j.headC} a={pose.head * 0.5} look={look} gazeY={target ? -pose.gaze * 0.8 : 0} />
-      {/* bras proche : manche + avant-bras peau + poignet terracotta + main */}
+      <circle cx={j.headC.x} cy={j.headC.y} r={HEAD_R} fill={colors.skin} />
+      <SideHairFill c={j.headC} hair={look.hair} color={colors.hair} />
       {j.elbowN && j.handN && wristN && (
         <g>
-          <Limb a={j.shoulder} b={j.elbowN} w={5.6} color={colors.top} />
-          <Limb a={j.elbowN} b={j.handN} w={4.6} color={colors.skin} />
+          <Flat a={j.shoulder} b={j.elbowN} w={5.8} color={colors.top} />
+          <Flat a={j.elbowN} b={j.handN} w={4.8} color={colors.skin} />
           <circle cx={wristN.x} cy={wristN.y} r={2.5} fill={ACCENT} />
-          <SideHand p={j.handN} a={j.handAN} skin={colors.skin} />
+          <circle cx={j.handN.x} cy={j.handN.y} r={2.7} fill={colors.skin} />
         </g>
       )}
-      {/* respiration ventrale */}
+
+      {/* ----- LE trait : contour unique du corps ----- */}
+      <path d={unionPath(near)} stroke={DARK} strokeWidth={INK_W} fill="none" strokeLinejoin="round" />
+
+      {/* ----- détails par-dessus ----- */}
+      {j.elbowN && j.handN && <SideHandFingers p={j.handN} a={j.handAN} skin={colors.skin} />}
+      <SideFace c={j.headC} look={look} gazeY={target ? -pose.gaze * 0.8 : 0} />
       {pose.belly > 0.02 && (
         <ellipse cx={j.belly.x + 4} cy={j.belly.y} rx={2 + pose.belly * 3} ry={3 + pose.belly * 3.4}
           fill="none" stroke={ACCENT} strokeWidth={1.1} opacity={0.55} />
       )}
-      {/* cible du regard */}
       {target && (
         <g>
           <path d={L({ x: j.headC.x + 7, y: j.headC.y - 1 }, gazeTarget)} stroke={ACCENT} strokeWidth={1.6} strokeDasharray="3 4" fill="none" />
@@ -382,19 +399,51 @@ function SideScene({ stand, desk }: { stand?: boolean; desk?: boolean }) {
 
 // ---------- Vue de face ----------
 
-function FrontHead({ cx, cy, turn, look }: { cx: number; cy: number; turn: number; look: Look }) {
+function frontHairRings(c: P, r: number, hair: HairId) {
+  if (hair === "chignon") return [circle({ x: c.x, y: c.y - r - 1.6 }, 3)];
+  if (hair === "queue") return [seg({ x: c.x + r - 1, y: c.y - 3 }, { x: c.x + r + 2.6, y: c.y + 5 }, 2.2, 1.6)];
+  if (hair === "mi-long")
+    return [
+      seg({ x: c.x - r + 0.6, y: c.y - 1 }, { x: c.x - r + 0.4, y: c.y + 7 }, 2.4, 1.8),
+      seg({ x: c.x + r - 0.6, y: c.y - 1 }, { x: c.x + r - 0.4, y: c.y + 7 }, 2.4, 1.8),
+    ];
+  if (hair === "boucles")
+    return [circle({ x: c.x - 5, y: c.y - r + 1 }, 3), circle({ x: c.x, y: c.y - r - 0.8 }, 3.3), circle({ x: c.x + 5, y: c.y - r + 1 }, 3)];
+  return [];
+}
+
+function FrontHairFill({ cx, cy, r, hair, color }: { cx: number; cy: number; r: number; hair: HairId; color: string }) {
+  if (hair === "ras")
+    return <path d={`M${cx - r} ${cy - 2} A ${r} ${r} 0 0 1 ${cx + r} ${cy - 2} L ${cx + r - 1.2} ${cy - 3.4} A ${r - 1.4} ${r - 1.4} 0 0 0 ${cx - r + 1.2} ${cy - 3.4} Z`} fill={color} opacity={0.9} />;
+  const cap = `M${cx - r - 0.2} ${cy - 1} A ${r + 0.3} ${r + 0.3} 0 0 1 ${cx + r + 0.2} ${cy - 1} Q ${cx + r - 1} ${cy - 3.6} ${cx + 2.6} ${cy - 4.4} Q ${cx} ${cy - 3.6} ${cx - 3.4} ${cy - 4.6} Q ${cx - r + 1.4} ${cy - 3.4} ${cx - r - 0.2} ${cy - 1} Z`;
+  return (
+    <g fill={color}>
+      <path d={cap} />
+      {hair === "mi-long" && (
+        <g>
+          <path d={`M${cx - r - 0.4} ${cy - 1.5} q -1.6 5.5 -0.4 8.5 q 2.2 1.4 3 -0.4 q -1.4 -4 -0.6 -7 Z`} />
+          <path d={`M${cx + r + 0.4} ${cy - 1.5} q 1.6 5.5 0.4 8.5 q -2.2 1.4 -3 -0.4 q 1.4 -4 0.6 -7 Z`} />
+        </g>
+      )}
+      {hair === "chignon" && <circle cx={cx} cy={cy - r - 1.6} r={3} />}
+      {hair === "queue" && <path d={`M${cx + r - 1} ${cy - 4} q 4.6 1.4 4 9 q -1.6 1.6 -2.8 0.2 q 0 -5 -2.4 -7.6 Z`} />}
+      {hair === "boucles" && (
+        <g>
+          <circle cx={cx - 5} cy={cy - r + 1} r={3.2} />
+          <circle cx={cx} cy={cy - r - 0.8} r={3.5} />
+          <circle cx={cx + 5} cy={cy - r + 1} r={3.2} />
+        </g>
+      )}
+    </g>
+  );
+}
+
+function FrontFace({ cx, cy, turn, look }: { cx: number; cy: number; turn: number; look: Look }) {
   const { colors, equipped } = look;
   const r = 9.5;
   const ex = turn * 2.2;
   return (
     <g>
-      <circle cx={cx} cy={cy} r={r} fill={colors.skin} stroke={DARK} strokeWidth={0.55} />
-      {/* oreilles */}
-      <circle cx={cx - r + 0.4} cy={cy + 0.5} r={1.6} fill={colors.skin} stroke={DARK} strokeWidth={0.45} />
-      <circle cx={cx + r - 0.4} cy={cy + 0.5} r={1.6} fill={colors.skin} stroke={DARK} strokeWidth={0.45} />
-      {/* cheveux */}
-      <FrontHair cx={cx} cy={cy} r={r} hair={look.hair} color={colors.hair} />
-      {/* yeux amande + sourcils */}
       {[-3.3, 3.3].map((o) => (
         <g key={o}>
           <ellipse cx={cx + o + ex} cy={cy - 0.4} rx={1.25} ry={1.7} fill={DARK} />
@@ -402,12 +451,10 @@ function FrontHead({ cx, cy, turn, look }: { cx: number; cy: number; turn: numbe
           <path d={`M${cx + o - 1.7} ${cy - 3.2} q 1.7 -1 3.4 -0.1`} stroke={colors.hair} strokeWidth={0.85} strokeLinecap="round" fill="none" />
         </g>
       ))}
-      {/* nez + bouche + joues */}
-      <circle cx={cx + ex * 0.6} cy={cy + 1.7} r={1} fill={colors.skin} stroke={DARK} strokeWidth={0.5} />
+      <path d={`M${cx - 0.8 + ex * 0.6} ${cy + 1.2} q 0.8 1 0 1.8`} stroke={DARK} strokeWidth={0.6} strokeLinecap="round" fill="none" />
       <path d={`M${cx - 1.8 + ex * 0.5} ${cy + 4.2} q 1.8 1.4 3.6 0`} stroke={DARK} strokeWidth={0.75} strokeLinecap="round" fill="none" />
       <circle cx={cx - 4.6} cy={cy + 2.6} r={1.15} fill={BLUSH} opacity={0.5} />
       <circle cx={cx + 4.6} cy={cy + 2.6} r={1.15} fill={BLUSH} opacity={0.5} />
-      {/* accessoires */}
       {equipped.includes("lunettes-rondes") && (
         <g stroke={DARK} strokeWidth={0.8} fill="none">
           <circle cx={cx - 3.3} cy={cy - 0.4} r={2.5} />
@@ -416,7 +463,7 @@ function FrontHead({ cx, cy, turn, look }: { cx: number; cy: number; turn: numbe
         </g>
       )}
       {equipped.includes("bob-sable") && (
-        <path d={`M${cx - r - 2.4} ${cy - 3.4} q ${r + 2.4} -9.5 ${2 * r + 4.8} 0 q 1.2 1.8 -1.2 1.8 l -${2 * r + 2.4} 0 q -2.4 0 -1.2 -1.8`} fill="#E9E0CE" stroke={DARK} strokeWidth={0.5} />
+        <path d={`M${cx - r - 2.4} ${cy - 3.4} q ${r + 2.4} -9.5 ${2 * r + 4.8} 0 q 1.2 1.8 -1.2 1.8 l -${2 * r + 2.4} 0 q -2.4 0 -1.2 -1.8`} fill="#E9E0CE" stroke={DARK} strokeWidth={0.6} />
       )}
       {equipped.includes("casque-audio") && (
         <g>
@@ -434,38 +481,13 @@ function FrontHead({ cx, cy, turn, look }: { cx: number; cy: number; turn: numbe
   );
 }
 
-function FrontHair({ cx, cy, r, hair, color }: { cx: number; cy: number; r: number; hair: HairId; color: string }) {
-  if (hair === "ras")
-    return <path d={`M${cx - r} ${cy - 2} A ${r} ${r} 0 0 1 ${cx + r} ${cy - 2} L ${cx + r - 1.2} ${cy - 3.4} A ${r - 1.4} ${r - 1.4} 0 0 0 ${cx - r + 1.2} ${cy - 3.4} Z`} fill={color} opacity={0.9} />;
-  const cap = `M${cx - r - 0.4} ${cy - 1} A ${r + 0.6} ${r + 0.6} 0 0 1 ${cx + r + 0.4} ${cy - 1} Q ${cx + r - 1} ${cy - 3.6} ${cx + 2.6} ${cy - 4.4} Q ${cx} ${cy - 3.6} ${cx - 3.4} ${cy - 4.6} Q ${cx - r + 1.4} ${cy - 3.4} ${cx - r - 0.4} ${cy - 1} Z`;
-  return (
-    <g fill={color}>
-      <path d={cap} />
-      {hair === "mi-long" && (
-        <g>
-          <path d={`M${cx - r - 0.6} ${cy - 1.5} q -1.8 6 -0.6 9 q 2.2 1.4 3 -0.4 q -1.4 -4.4 -0.6 -7.4 Z`} />
-          <path d={`M${cx + r + 0.6} ${cy - 1.5} q 1.8 6 0.6 9 q -2.2 1.4 -3 -0.4 q 1.4 -4.4 0.6 -7.4 Z`} />
-        </g>
-      )}
-      {hair === "chignon" && <circle cx={cx} cy={cy - r - 1.6} r={3} />}
-      {hair === "queue" && <path d={`M${cx + r - 1} ${cy - 4} q 4.6 1.4 4 9 q -1.6 1.6 -2.8 0.2 q 0 -5 -2.4 -7.6 Z`} />}
-      {hair === "boucles" && (
-        <g>
-          <circle cx={cx - 5} cy={cy - r + 1} r={3.2} />
-          <circle cx={cx} cy={cy - r - 0.8} r={3.5} />
-          <circle cx={cx + 5} cy={cy - r + 1} r={3.2} />
-        </g>
-      )}
-    </g>
-  );
-}
-
 function FrontBody({ pose, look }: { pose: FullFront; look: Look }) {
   const { colors, equipped } = look;
   const shY = 45 - pose.shrug * 5 - pose.grow * 3;
   const hipY = 80;
-  const shL = { x: 45, y: shY };
-  const shR = { x: 75, y: shY };
+  const tx = pose.twist * 2; // décalage de torsion (léger)
+  const shL = { x: 45 + tx, y: shY };
+  const shR = { x: 75 + tx, y: shY };
   const arm = (side: 1 | -1, spec: { sh: number; el: number } | null) => {
     if (!spec) return null;
     const s = side === 1 ? shR : shL;
@@ -477,55 +499,81 @@ function FrontBody({ pose, look }: { pose: FullFront; look: Look }) {
   };
   const aL = arm(-1, pose.armL);
   const aR = arm(1, pose.armR);
-  const twistDeg = pose.twist * 16;
-  const headC = { x: 60 + pose.turn * 2, y: 25 + pose.nod * 0.4 - pose.grow * 4 };
+  // tête : nod/grow + inclinaison latérale autour de la base du cou
+  const hc0 = { x: 60 + tx + pose.turn * 2, y: 25 + pose.nod * 0.4 - pose.grow * 4 };
+  const tilt = rad(pose.tilt);
+  const pivot = { x: 60 + tx, y: shY - 6 };
+  const headC = {
+    x: pivot.x + (hc0.x - pivot.x) * Math.cos(tilt) - (hc0.y - pivot.y) * Math.sin(tilt),
+    y: pivot.y + (hc0.x - pivot.x) * Math.sin(tilt) + (hc0.y - pivot.y) * Math.cos(tilt),
+  };
   const kneeAngle = rad(10 + pose.knees * 26);
   const hip = pose.hipShift * 6;
+  const R = 9.5;
+
+  // jambes (assises, de face)
+  const legs = [-1, 1].map((s) => {
+    const hx = 60 + s * 8 + pose.hipShift * 5;
+    const ky = hipY + 6 + Math.cos(kneeAngle) * 20;
+    const kx = hx + s * Math.sin(kneeAngle) * 20;
+    return { s, a: { x: hx, y: hipY + 5 }, b: { x: kx, y: ky } };
+  });
+
+  // ----- contour unifié -----
+  const parts = [
+    circle(headC, R + 0.2),
+    ...frontHairRings(headC, R, look.hair),
+    seg({ x: 60 + tx, y: shY }, { x: headC.x, y: headC.y + 4 }, 2.3, 2.6),
+    seg(shL, shR, 5),
+    seg({ x: 60 + tx * 0.5, y: shY + 2 }, { x: 60 + hip, y: hipY - 2 }, 13.2, 11),
+    seg({ x: 52 + hip, y: hipY + 3.5 }, { x: 68 + hip, y: hipY + 3.5 }, 5.6),
+    ...legs.flatMap((l) => [seg(l.a, l.b, 3.3, 3), ellipse({ x: l.b.x, y: l.b.y + 2.4 }, 3.6, 2.1)]),
+  ];
+  for (const e of [aL, aR]) {
+    if (e) parts.push(seg(e.s, e.elbow, 2.8, 2.5), seg(e.elbow, e.hand, 2.4, 2.1), circle(e.hand, 2.6));
+  }
+
   return (
     <g transform={pose.bend !== 0 ? `rotate(${pose.bend} 60 ${hipY})` : undefined}>
-      {/* jambes assises (face) */}
-      {[-1, 1].map((s) => {
-        const hx = 60 + s * 8 + pose.hipShift * 5;
-        const ky = hipY + 6 + Math.cos(kneeAngle) * 20;
-        const kx = hx + s * Math.sin(kneeAngle) * 20;
-        return (
-          <g key={s}>
-            <Limb a={{ x: hx, y: hipY + 5 }} b={{ x: kx, y: ky }} w={6.4} color={colors.trousers} />
-            <ellipse cx={kx} cy={ky + 2.4} rx={3.4} ry={2} fill={colors.shoes} stroke={DARK} strokeWidth={0.5} />
-          </g>
-        );
-      })}
-      {/* bassin */}
-      <path d={`M${48 + hip} ${hipY + 6.5} q 12 4.5 24 0 l -1.5 -6 q -10.5 -3 -21 0 Z`} fill={colors.trousers} stroke={DARK} strokeWidth={0.5} />
-      <g transform={twistDeg !== 0 ? `rotate(${twistDeg * 0.4} 60 ${shY + 16}) translate(${pose.twist * 2} 0)` : undefined}>
-        {/* torse habillé */}
-        <path
-          d={`M${shL.x - 4.5} ${shL.y - 3} Q 60 ${shY - 6.5} ${shR.x + 4.5} ${shR.y - 3}
-              L ${72 + hip} ${hipY + 1} Q 60 ${hipY + 4.5} ${48 + hip} ${hipY + 1} Z`}
-          fill={colors.top} stroke={DARK} strokeWidth={0.55} strokeLinejoin="round" />
-        <path d={`M${48 + hip} ${hipY + 0.5} Q 60 ${hipY + 4} ${72 + hip} ${hipY + 0.5}`} stroke={ACCENT} strokeWidth={1.6} fill="none" strokeLinecap="round" />
-        {equipped.includes("echarpe-terracotta") && (
-          <path d={`M${shL.x + 2} ${shY - 1} q 13 4 26 0 l -1 -4 q -12 -3 -24 0 Z`} fill={ACCENT} />
-        )}
-        {/* bras */}
-        {[aL && { a: aL, s: -1 as const }, aR && { a: aR, s: 1 as const }].map((e, i) =>
-          e ? (
-            <g key={i}>
-              <Limb a={e.a.s} b={e.a.elbow} w={5.4} color={colors.top} />
-              <Limb a={e.a.elbow} b={e.a.hand} w={4.4} color={colors.skin} />
-              <circle
-                cx={e.a.hand.x - (e.a.hand.x - e.a.elbow.x) * 0.22}
-                cy={e.a.hand.y - (e.a.hand.y - e.a.elbow.y) * 0.22}
-                r={2.3} fill={ACCENT} />
-              <circle cx={e.a.hand.x} cy={e.a.hand.y} r={2.6} fill={colors.skin} stroke={DARK} strokeWidth={0.5} />
-            </g>
-          ) : null,
-        )}
-        {/* cou + tête */}
-        <path d={`M60 ${shY} L60 ${headC.y + 6}`} stroke={colors.skin} strokeWidth={4.4} strokeLinecap="round" />
-        <g transform={pose.tilt !== 0 ? `rotate(${pose.tilt} 60 ${shY - 6})` : undefined}>
-          <FrontHead cx={headC.x} cy={headC.y} turn={pose.turn} look={look} />
+      {/* aplats */}
+      {legs.map((l) => (
+        <g key={l.s}>
+          <Flat a={l.a} b={l.b} w={6.4} color={colors.trousers} />
+          <ellipse cx={l.b.x} cy={l.b.y + 2.4} rx={3.4} ry={2} fill={colors.shoes} />
         </g>
+      ))}
+      <path d={`M${48 + hip} ${hipY + 6.5} q 12 4.5 24 0 l -1.5 -6 q -10.5 -3 -21 0 Z`} fill={colors.trousers} />
+      <path
+        d={`M${shL.x - 4.5} ${shL.y - 3} Q ${60 + tx} ${shY - 6.5} ${shR.x + 4.5} ${shR.y - 3}
+            L ${72 + hip} ${hipY + 1} Q 60 ${hipY + 4.5} ${48 + hip} ${hipY + 1} Z`}
+        fill={colors.top} />
+      <path d={`M${48 + hip} ${hipY + 0.5} Q 60 ${hipY + 4} ${72 + hip} ${hipY + 0.5}`} stroke={ACCENT} strokeWidth={1.6} fill="none" strokeLinecap="round" />
+      {equipped.includes("echarpe-terracotta") && (
+        <path d={`M${shL.x + 2} ${shY - 1} q 13 4 26 0 l -1 -4 q -12 -3 -24 0 Z`} fill={ACCENT} />
+      )}
+      {[aL && { a: aL, s: -1 as const }, aR && { a: aR, s: 1 as const }].map((e, i) =>
+        e ? (
+          <g key={i}>
+            <Flat a={e.a.s} b={e.a.elbow} w={5.6} color={colors.top} />
+            <Flat a={e.a.elbow} b={e.a.hand} w={4.6} color={colors.skin} />
+            <circle
+              cx={e.a.hand.x - (e.a.hand.x - e.a.elbow.x) * 0.22}
+              cy={e.a.hand.y - (e.a.hand.y - e.a.elbow.y) * 0.22}
+              r={2.3} fill={ACCENT} />
+            <circle cx={e.a.hand.x} cy={e.a.hand.y} r={2.6} fill={colors.skin} />
+          </g>
+        ) : null,
+      )}
+      <path d={`M${60 + tx} ${shY} L${headC.x} ${headC.y + 5}`} stroke={colors.skin} strokeWidth={4.4} strokeLinecap="round" />
+      <circle cx={headC.x} cy={headC.y} r={R} fill={colors.skin} />
+      <FrontHairFill cx={headC.x} cy={headC.y} r={R} hair={look.hair} color={colors.hair} />
+
+      {/* LE trait */}
+      <path d={unionPath(parts)} stroke={DARK} strokeWidth={INK_W} fill="none" strokeLinejoin="round" />
+
+      {/* détails */}
+      <g transform={pose.tilt !== 0 ? `rotate(${pose.tilt} ${pivot.x} ${pivot.y})` : undefined}>
+        <FrontFace cx={hc0.x} cy={hc0.y} turn={pose.turn} look={look} />
       </g>
     </g>
   );
@@ -560,16 +608,18 @@ function FaceScene({ kind, p, staticMode, look }: { kind: FaceKind; p: number; s
     </g>
   );
   const breath = kind === "palming" || kind === "rest-closed" ? 1 + Math.sin(ang) * 0.013 : 1;
+  // contour unifié du gros plan : crâne + oreilles
+  const headParts = [circle({ x: 60, y: 55 }, 31), circle({ x: 31, y: 56 }, 4.2), circle({ x: 89, y: 56 }, 4.2)];
   return (
     <g transform={`scale(${breath})`} style={{ transformOrigin: "60px 56px" }}>
-      {/* visage large */}
-      <circle cx={60} cy={55} r={31} fill={colors.skin} stroke={DARK} strokeWidth={1} />
-      <FrontHair cx={60} cy={51} r={31} hair={look.hair} color={colors.hair} />
-      <circle cx={31} cy={56} r={4.4} fill={colors.skin} stroke={DARK} strokeWidth={0.8} />
-      <circle cx={89} cy={56} r={4.4} fill={colors.skin} stroke={DARK} strokeWidth={0.8} />
+      <circle cx={60} cy={55} r={31} fill={colors.skin} />
+      <circle cx={31} cy={56} r={4.2} fill={colors.skin} />
+      <circle cx={89} cy={56} r={4.2} fill={colors.skin} />
+      <FrontHairFill cx={60} cy={51} r={31} hair={look.hair} color={colors.hair} />
+      <path d={unionPath(headParts)} stroke={DARK} strokeWidth={1.2} fill="none" />
       {!hands && eye(47)}
       {!hands && eye(73)}
-      <circle cx={60} cy={57} r={2.2} fill={colors.skin} stroke={DARK} strokeWidth={0.8} />
+      <path d="M58.6 55 q 1.4 1.6 0 3" stroke={DARK} strokeWidth={0.9} fill="none" strokeLinecap="round" />
       <path d="M54 70 Q60 73.5 66 70" stroke={DARK} strokeWidth={1.4} fill="none" strokeLinecap="round" />
       <circle cx={44} cy={64} r={2.6} fill={BLUSH} opacity={0.5} />
       <circle cx={76} cy={64} r={2.6} fill={BLUSH} opacity={0.5} />
@@ -598,63 +648,83 @@ function FaceScene({ kind, p, staticMode, look }: { kind: FaceKind; p: number; s
 
 // ---------- Gros plan main (poignets/doigts) ----------
 
-// Main détaillée : paume + 4 doigts à 2 phalanges + pouce, courbure `curl` 0..1,
-// écartement `spread` 0..1. Origine au poignet, doigts vers le haut.
-function DetailedHand({
-  x, y, curl, spread = 0, rot = 0, skin, scale = 1,
-}: { x: number; y: number; curl: number; spread?: number; rot?: number; skin: string; scale?: number }) {
-  const fingers = [-5.2, -1.8, 1.8, 5.2];
-  const lens = [10, 12, 11, 8.5];
+// Main détaillée en coordonnées globales : paume + 4 doigts (2 phalanges) +
+// pouce. Rend les aplats ET fournit ses volumes pour le contour unifié.
+function handGeom(x: number, y: number, curl: number, spread: number, rotDeg: number, scale: number) {
+  const rot = rad(rotDeg);
+  const g = (px: number, py: number): P => ({
+    x: x + (px * Math.cos(rot) - py * Math.sin(rot)) * scale,
+    y: y + (px * Math.sin(rot) + py * Math.cos(rot)) * scale,
+  });
+  const fingers = [-5.2, -1.8, 1.8, 5.2].map((fx, i) => {
+    const len = [10, 12, 11, 8.5][i];
+    const sp = spread * (i - 1.5) * 9;
+    const c2 = curl * 70;
+    const base = { x: fx, y: -12 };
+    const mid = {
+      x: base.x + Math.sin(rad(sp)) * len * 0.55,
+      y: base.y - Math.cos(rad(sp)) * len * 0.55 * (1 - curl * 0.35),
+    };
+    const tip = {
+      x: mid.x + Math.sin(rad(sp + c2)) * len * 0.45,
+      y: mid.y - Math.cos(rad(sp + c2)) * len * 0.45 * (1 - curl * 0.55),
+    };
+    return { base: g(base.x, base.y), mid: g(mid.x, mid.y), tip: g(tip.x, tip.y) };
+  });
+  const thumb = { a: g(-7, -4), b: g(-9.5 + curl * 5, -13 + curl * 3) };
+  const palmC = g(0, -6);
+  return { fingers, thumb, palmC, rotDeg, scale };
+}
+
+function HandFills({ h, skin }: { h: ReturnType<typeof handGeom>; skin: string }) {
+  const s = h.scale;
   return (
-    <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${scale})`}>
-      <path d={`M-7 0 Q -8 -8 -5.5 -12 L 5.5 -12 Q 8 -8 7 0 Q 0 3.4 -7 0 Z`} fill={skin} stroke={DARK} strokeWidth={0.9} strokeLinejoin="round" />
-      {fingers.map((fx, i) => {
-        const l1 = lens[i] * 0.55, l2 = lens[i] * 0.45;
-        const sp = spread * (i - 1.5) * 9;
-        const c1 = curl * 55, c2 = curl * 70;
-        const a1 = rad(sp + c1 * 0);
-        const x1 = fx + Math.sin(a1) * 0, y1 = -12;
-        const e = { x: x1 + Math.sin(rad(sp)) * l1 - Math.sin(rad(c1)) * 0, y: y1 - Math.cos(rad(sp)) * l1 * (1 - curl * 0.35) };
-        const tip = { x: e.x + Math.sin(rad(sp + c2)) * l2, y: e.y - Math.cos(rad(sp + c2)) * l2 * (1 - curl * 0.55) };
-        return (
-          <g key={i} stroke={skin} strokeLinecap="round" fill="none">
-            <path d={`M${x1} ${y1} L ${e.x.toFixed(1)} ${e.y.toFixed(1)}`} strokeWidth={3.6} stroke={DARK} opacity={0.85} />
-            <path d={`M${x1} ${y1} L ${e.x.toFixed(1)} ${e.y.toFixed(1)}`} strokeWidth={2.9} />
-            <path d={`M${e.x.toFixed(1)} ${e.y.toFixed(1)} L ${tip.x.toFixed(1)} ${tip.y.toFixed(1)}`} strokeWidth={3.3} stroke={DARK} opacity={0.85} />
-            <path d={`M${e.x.toFixed(1)} ${e.y.toFixed(1)} L ${tip.x.toFixed(1)} ${tip.y.toFixed(1)}`} strokeWidth={2.6} />
-          </g>
-        );
-      })}
-      {/* pouce */}
-      <g strokeLinecap="round" fill="none">
-        <path d={`M-7 -4 Q ${-11 + curl * 4} ${-8 + curl * 2} ${-9.5 + curl * 5} ${-13 + curl * 3}`} strokeWidth={4.2} stroke={DARK} opacity={0.85} />
-        <path d={`M-7 -4 Q ${-11 + curl * 4} ${-8 + curl * 2} ${-9.5 + curl * 5} ${-13 + curl * 3}`} strokeWidth={3.4} stroke={skin} />
-      </g>
+    <g strokeLinecap="round" fill="none">
+      <ellipse cx={h.palmC.x} cy={h.palmC.y} rx={7.2 * s} ry={6.8 * s} transform={`rotate(${h.rotDeg} ${h.palmC.x} ${h.palmC.y})`} fill={skin} stroke="none" />
+      {h.fingers.map((f, i) => (
+        <g key={i} stroke={skin}>
+          <path d={L(f.base, f.mid)} strokeWidth={3 * s} />
+          <path d={L(f.mid, f.tip)} strokeWidth={2.6 * s} />
+        </g>
+      ))}
+      <path d={L(h.thumb.a, h.thumb.b)} stroke={skin} strokeWidth={3.2 * s} />
     </g>
   );
+}
+
+function handRings(h: ReturnType<typeof handGeom>) {
+  const s = h.scale;
+  return [
+    ellipse(h.palmC, 7.2 * s, 6.8 * s, h.rotDeg),
+    ...h.fingers.flatMap((f) => [seg(f.base, f.mid, 1.55 * s, 1.4 * s, 5), seg(f.mid, f.tip, 1.35 * s, 1.15 * s, 5)]),
+    seg(h.thumb.a, h.thumb.b, 1.7 * s, 1.4 * s, 5),
+  ];
 }
 
 function HandsScene({ kind, p, staticMode, look }: { kind: HandsKind; p: number; staticMode: boolean; look: Look }) {
   const { colors } = look;
   const t = staticMode ? 0.85 : (p < 0.5 ? p * 2 : 2 - p * 2);
   const eased = easeInOut(t);
-  const forearm = (x1: number, y1: number, x2: number, y2: number) => (
+
+  const forearmFill = (a: P, b: P) => (
     <g>
-      <path d={`M${x1} ${y1} L${x2} ${y2}`} stroke={DARK} strokeWidth={13} strokeLinecap="round" opacity={0.85} />
-      <path d={`M${x1} ${y1} L${x2} ${y2}`} stroke={colors.top} strokeWidth={12} strokeLinecap="round" />
-      {/* poignet peau + liseré terracotta */}
-      <circle cx={x2} cy={y2} r={5.4} fill={colors.skin} />
-      <path d={`M${x2 - 5} ${y2 + 2.6} a 5.4 5.4 0 0 1 10 0`} stroke={ACCENT} strokeWidth={2} fill="none" />
+      <path d={L(a, b)} stroke={colors.top} strokeWidth={12} strokeLinecap="round" fill="none" />
+      <circle cx={b.x} cy={b.y} r={5.4} fill={colors.skin} />
+      <path d={`M${b.x - 5} ${b.y + 2.6} a 5.4 5.4 0 0 1 10 0`} stroke={ACCENT} strokeWidth={2} fill="none" />
     </g>
   );
+  const forearmRings = (a: P, b: P) => [seg(a, b, 6.2, 5.8), circle(b, 5.4)];
 
   if (kind === "finger-fan" || kind === "fist") {
     const curl = kind === "fist" ? eased : 0.05;
     const spread = kind === "finger-fan" ? eased : 0;
+    const h = handGeom(60, 70, curl, spread, 0, 2.1);
+    const fa = { x: 60, y: 112 }, fb = { x: 60, y: 84 };
     return (
       <g>
-        {forearm(60, 112, 60, 82)}
-        <DetailedHand x={60} y={70} curl={curl} spread={spread} skin={colors.skin} scale={2.1} />
+        {forearmFill(fa, fb)}
+        <HandFills h={h} skin={colors.skin} />
+        <path d={unionPath([...forearmRings(fa, fb), ...handRings(h)])} stroke={DARK} strokeWidth={1.3} fill="none" strokeLinejoin="round" />
         <path d={kind === "finger-fan" ? "M28 30 A 36 36 0 0 1 92 30" : "M40 26 L60 40 M80 26 L60 40"}
           stroke={ACCENT} strokeWidth={2.6} strokeLinecap="round" fill="none" markerEnd="url(#m-arrowhead)" />
       </g>
@@ -665,12 +735,19 @@ function HandsScene({ kind, p, staticMode, look }: { kind: HandsKind; p: number;
     const inv = kind === "prayer-inv";
     const dy = eased * 8 * (inv ? -1 : 1);
     const cy = 58 + dy;
+    const h1 = handGeom(53, cy + 12, 0.04, 0, inv ? 190 : -10, 1.55);
+    const h2 = handGeom(67, cy + 12, 0.04, 0, inv ? 170 : 10, 1.55);
+    const f1 = { a: { x: 22, y: 104 }, b: { x: 46, y: cy + 16 } };
+    const f2 = { a: { x: 98, y: 104 }, b: { x: 74, y: cy + 16 } };
     return (
       <g>
-        {forearm(22, 104, 46, cy + 16)}
-        {forearm(98, 104, 74, cy + 16)}
-        <DetailedHand x={53} y={cy + 12} curl={0.04} rot={inv ? 190 : -10} skin={colors.skin} scale={1.55} />
-        <DetailedHand x={67} y={cy + 12} curl={0.04} rot={inv ? 170 : 10} skin={colors.skin} scale={1.55} />
+        {forearmFill(f1.a, f1.b)}
+        {forearmFill(f2.a, f2.b)}
+        <HandFills h={h1} skin={colors.skin} />
+        <HandFills h={h2} skin={colors.skin} />
+        <path
+          d={unionPath([...forearmRings(f1.a, f1.b), ...forearmRings(f2.a, f2.b), ...handRings(h1), ...handRings(h2)])}
+          stroke={DARK} strokeWidth={1.3} fill="none" strokeLinejoin="round" />
         {[36, 84].map((x) => (
           <path key={x} d={inv ? `M${x} ${cy + 8} L${x} ${cy - 8}` : `M${x} ${cy - 6} L${x} ${cy + 10}`}
             stroke={ACCENT} strokeWidth={2.6} markerEnd="url(#m-arrowhead)" fill="none" />
@@ -679,23 +756,21 @@ function HandsScene({ kind, p, staticMode, look }: { kind: HandsKind; p: number;
     );
   }
 
-  // profil avant-bras + main pivotante
   const wrist = { x: 58, y: 62 };
   const rot =
     kind === "wrist-flex" ? lerp(95, 148, eased)
     : kind === "wrist-ext" ? lerp(85, 32, eased)
     : kind === "wrist-circles" ? 90 + Math.sin(p * Math.PI * 2) * 46
     : kind === "shake" ? 90 + Math.sin(p * Math.PI * 10) * 18
-    : kind === "flip" ? 90
     : 90;
-  const curl =
-    kind === "forearm-massage" ? 0.3
-    : kind === "thumb" ? 0.15
-    : 0.06;
+  const curl = kind === "forearm-massage" ? 0.3 : kind === "thumb" ? 0.15 : 0.06;
+  const h = handGeom(wrist.x + 4, wrist.y, curl, 0, rot, 1.9);
+  const fa = { x: 14, y: 74 }, fb = { x: wrist.x - 4, y: wrist.y + 2 };
   return (
     <g>
-      {forearm(14, 74, wrist.x - 4, wrist.y + 2)}
-      <DetailedHand x={wrist.x + 4} y={wrist.y} curl={curl} rot={rot} skin={colors.skin} scale={1.9} />
+      {forearmFill(fa, fb)}
+      <HandFills h={h} skin={colors.skin} />
+      <path d={unionPath([...forearmRings(fa, fb), ...handRings(h)])} stroke={DARK} strokeWidth={1.3} fill="none" strokeLinejoin="round" />
       {kind === "flip" && (
         <path d="M92 44 A 13 13 0 1 1 92 70" stroke={ACCENT} strokeWidth={2.6} strokeDasharray="4 4" fill="none" markerEnd="url(#m-arrowhead)" />
       )}
@@ -797,9 +872,9 @@ export function ExerciseFigure({
     const frames = motion.frames.map((f) => mergeSide(defs, f));
     const poseAt = (tt: number) => {
       if (frames.length === 1) return frames[0];
-      const seg = tt * (frames.length - 1);
-      const i = Math.min(frames.length - 2, Math.floor(seg));
-      return lerpSide(frames[i], frames[i + 1], seg - i);
+      const s = tt * (frames.length - 1);
+      const i = Math.min(frames.length - 2, Math.floor(s));
+      return lerpSide(frames[i], frames[i + 1], s - i);
     };
     body = (
       <>
@@ -812,9 +887,9 @@ export function ExerciseFigure({
     const frames = motion.frames.map(mergeFront);
     const poseAt = (tt: number) => {
       if (frames.length === 1) return frames[0];
-      const seg = tt * (frames.length - 1);
-      const i = Math.min(frames.length - 2, Math.floor(seg));
-      return lerpFront(frames[i], frames[i + 1], seg - i);
+      const s = tt * (frames.length - 1);
+      const i = Math.min(frames.length - 2, Math.floor(s));
+      return lerpFront(frames[i], frames[i + 1], s - i);
     };
     body = <FrontBody pose={staticMode ? frames[frames.length - 1] : poseAt(eased)} look={look} />;
   } else if (motion.view === "face") {
