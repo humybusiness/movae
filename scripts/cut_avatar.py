@@ -58,19 +58,24 @@ CFG = {
         "pelvis": (507, 552),
         "ground": 985,
         "pieces": {
-            "legL":   dict(crop=(395, 540, 517, 992), pivot=(468, 558), parent=None, z=1, clear=[(508, 600, 517, 992)]),
-            "legR":   dict(crop=(500, 540, 625, 992), pivot=(542, 558), parent=None, z=1, clear=[(500, 600, 509, 992)]),
+            "legL":   dict(crop=(395, 540, 517, 992), pivot=(468, 558), parent=None, z=1, clear=[(508, 600, 517, 992)], caps=[(468, 562, 36, (505, 650))]),
+            "legR":   dict(crop=(500, 540, 625, 992), pivot=(542, 558), parent=None, z=1, clear=[(500, 600, 509, 992)], caps=[(542, 562, 36, (505, 650))]),
             "torso":  dict(crop=(415, 240, 620, 580), pivot=(507, 552), parent=None, z=3,
-                           clear=[(415, 345, 452, 580), (585, 345, 620, 580)]),
-            "head":   dict(crop=(385, 15, 625, 278), pivot=(505, 262), parent="torso", z=4),
+                           clear=[(415, 345, 452, 580), (585, 345, 620, 580)],
+                           lines=[(454, 345, 545), (583, 345, 545)]),
+            "head":   dict(crop=(385, 15, 625, 278), pivot=(505, 262), parent="torso", z=4, caps=[(505, 256, 22, (505, 250))]),
             "armLup": dict(crop=(340, 300, 470, 470), pivot=(438, 318), parent="torso", z=5,
-                           clear=[(452, 345, 470, 470)]),
+                           keep_poly=[(360, 300), (466, 300), (466, 346), (452, 470), (368, 470), (352, 360)],
+                           caps=[(438, 322, 26, (505, 400)), (435, 443, 23, (400, 430))]),
             "armLlo": dict(crop=(335, 428, 470, 672), pivot=(435, 445), parent="armLup", z=4,
-                           clear=[(452, 428, 470, 672)]),
+                           keep_poly=[(352, 428), (452, 428), (448, 505), (430, 545), (424, 670), (352, 670), (348, 545), (348, 505)],
+                           caps=[(435, 449, 22, (400, 460))]),
             "armRup": dict(crop=(540, 300, 672, 470), pivot=(577, 318), parent="torso", z=5,
-                           clear=[(540, 345, 558, 470)]),
+                           keep_poly=[(549, 300), (655, 300), (663, 360), (647, 470), (563, 470), (549, 346)],
+                           caps=[(577, 322, 26, (505, 400)), (578, 443, 23, (615, 430))]),
             "armRlo": dict(crop=(540, 428, 675, 672), pivot=(578, 445), parent="armRup", z=4,
-                           clear=[(540, 428, 558, 470)]),
+                           keep_poly=[(663, 428), (563, 428), (567, 505), (585, 545), (591, 670), (663, 670), (667, 545), (667, 505)],
+                           caps=[(578, 449, 22, (615, 460))]),
         },
     },
     ("m", "side"): {
@@ -78,16 +83,17 @@ CFG = {
         "pelvis": (mx(1010), 558),
         "ground": 985,
         "pieces": {
-            "thigh": dict(crop=(mx(1090), 545, mx(935), 748), pivot=(mx(1008), 562), parent=None, z=3),
-            "shin":  dict(crop=(mx(1090), 712, mx(930), 915), pivot=(mx(1002), 732), parent="thigh", z=2),
+            "thigh": dict(crop=(mx(1090), 545, mx(935), 748), pivot=(mx(1008), 562), parent=None, z=3, caps=[(mx(1008), 566, 40, (mx(970), 620)), (mx(1002), 730, 32, (mx(970), 620))]),
+            "shin":  dict(crop=(mx(1090), 712, mx(930), 915), pivot=(mx(1002), 732), parent="thigh", z=2, caps=[(mx(1002), 736, 31, (mx(970), 800))]),
             "foot":  dict(crop=(mx(1115), 885, mx(860), 998), pivot=(mx(1006), 902), parent="shin", z=1),
             "torso": dict(crop=(mx(1095), 238, mx(925), 585), pivot=(mx(1010), 558), parent=None, z=4,
                           inpaint=dict(zone=(mx(1078), 330, mx(990), 585),
                                        bands=[(0, 524, (mx(970), 420)), (524, 560, (mx(970), 545)), (560, 9999, (mx(970), 620))])),
-            "head":  dict(crop=(mx(1135), 8, mx(865), 278), pivot=(mx(1012), 252), parent="torso", z=5),
-            "armup": dict(crop=(mx(1090), 295, mx(975), 470), pivot=(mx(1025), 318), parent="torso", z=7),
+            "head":  dict(crop=(mx(1135), 8, mx(865), 278), pivot=(mx(1012), 252), parent="torso", z=5, caps=[(mx(1012), 248, 22, (mx(1005), 232))]),
+            "armup": dict(crop=(mx(1090), 295, mx(975), 470), pivot=(mx(1025), 318), parent="torso", z=7, caps=[(mx(1025), 322, 30, (mx(970), 420)), (mx(1032), 443, 26, (mx(970), 420))]),
             "armlo": dict(crop=(mx(1090), 428, mx(975), 672), pivot=(mx(1032), 445), parent="armup", z=6,
                           keep_poly=[(452,428),(552,428),(552,555),(538,570),(534,672),(474,672),(470,570),(452,555)],
+                          caps=[(mx(1032), 447, 25, (mx(970), 460))],
                           color_clear=dict(y_from=560, ref=(566, 620), tol=34)),
         },
         "far": {"thigh": "thigh", "shin": "shin", "foot": "foot", "armup": "armup", "armlo": "armlo"},
@@ -97,19 +103,24 @@ CFG = {
         "pelvis": (503, 548),
         "ground": 985,
         "pieces": {
-            "legL":   dict(crop=(392, 535, 512, 995), pivot=(466, 552), parent=None, z=1, clear=[(505, 600, 512, 995)]),
-            "legR":   dict(crop=(498, 535, 622, 995), pivot=(538, 552), parent=None, z=1, clear=[(498, 600, 506, 995)]),
+            "legL":   dict(crop=(392, 535, 512, 995), pivot=(466, 552), parent=None, z=1, clear=[(505, 600, 512, 995)], caps=[(466, 556, 36, (503, 650))]),
+            "legR":   dict(crop=(498, 535, 622, 995), pivot=(538, 552), parent=None, z=1, clear=[(498, 600, 506, 995)], caps=[(538, 556, 36, (503, 650))]),
             "torso":  dict(crop=(415, 240, 615, 575), pivot=(503, 548), parent=None, z=3,
-                           clear=[(415, 340, 450, 575), (582, 340, 615, 575)]),
-            "head":   dict(crop=(370, 20, 635, 275), pivot=(500, 258), parent="torso", z=4),
+                           clear=[(415, 340, 450, 575), (582, 340, 615, 575)],
+                           lines=[(452, 340, 540), (580, 340, 540)]),
+            "head":   dict(crop=(370, 20, 635, 275), pivot=(500, 258), parent="torso", z=4, caps=[(500, 252, 22, (500, 246))]),
             "armLup": dict(crop=(340, 295, 468, 468), pivot=(436, 315), parent="torso", z=5,
-                           clear=[(450, 340, 468, 468)]),
+                           keep_poly=[(358, 295), (464, 295), (464, 342), (450, 468), (366, 468), (350, 357)],
+                           caps=[(436, 319, 25, (503, 400)), (433, 440, 22, (398, 430))]),
             "armLlo": dict(crop=(335, 425, 468, 668), pivot=(433, 442), parent="armLup", z=4,
-                           clear=[(450, 425, 468, 668)]),
+                           keep_poly=[(350, 425), (450, 425), (446, 502), (428, 542), (422, 666), (350, 666), (346, 542), (346, 502)],
+                           caps=[(433, 446, 21, (398, 458))]),
             "armRup": dict(crop=(538, 295, 670, 468), pivot=(572, 315), parent="torso", z=5,
-                           clear=[(538, 340, 556, 468)]),
+                           keep_poly=[(540, 295), (646, 295), (654, 357), (638, 468), (554, 468), (540, 342)],
+                           caps=[(572, 319, 25, (503, 400)), (576, 440, 22, (610, 430))]),
             "armRlo": dict(crop=(538, 425, 672, 668), pivot=(576, 442), parent="armRup", z=4,
-                           clear=[(538, 425, 556, 468)]),
+                           keep_poly=[(654, 425), (554, 425), (558, 502), (576, 542), (582, 666), (654, 666), (658, 542), (658, 502)],
+                           caps=[(576, 446, 21, (610, 458))]),
         },
     },
     ("f", "side"): {
@@ -117,16 +128,17 @@ CFG = {
         "pelvis": (mx(1002), 552),
         "ground": 985,
         "pieces": {
-            "thigh": dict(crop=(mx(1080), 540, mx(930), 745), pivot=(mx(1000), 558), parent=None, z=3),
-            "shin":  dict(crop=(mx(1080), 708, mx(925), 912), pivot=(mx(996), 728), parent="thigh", z=2),
+            "thigh": dict(crop=(mx(1080), 540, mx(930), 745), pivot=(mx(1000), 558), parent=None, z=3, caps=[(mx(1000), 562, 38, (mx(965), 610)), (mx(996), 726, 31, (mx(965), 610))]),
+            "shin":  dict(crop=(mx(1080), 708, mx(925), 912), pivot=(mx(996), 728), parent="thigh", z=2, caps=[(mx(996), 732, 30, (mx(965), 800))]),
             "foot":  dict(crop=(mx(1110), 880, mx(855), 998), pivot=(mx(1000), 898), parent="shin", z=1),
             "torso": dict(crop=(mx(1090), 240, mx(920), 580), pivot=(mx(1002), 552), parent=None, z=4,
                           inpaint=dict(zone=(mx(1075), 330, mx(995), 580),
                                        bands=[(0, 515, (mx(965), 420)), (515, 552, (mx(965), 535)), (552, 9999, (mx(965), 610))])),
-            "head":  dict(crop=(mx(1120), 15, mx(855), 278), pivot=(mx(992), 255), parent="torso", z=5),
-            "armup": dict(crop=(mx(1085), 295, mx(980), 470), pivot=(mx(1018), 318), parent="torso", z=7),
+            "head":  dict(crop=(mx(1120), 15, mx(855), 278), pivot=(mx(992), 255), parent="torso", z=5, caps=[(mx(992), 251, 22, (mx(988), 232))]),
+            "armup": dict(crop=(mx(1085), 295, mx(980), 470), pivot=(mx(1018), 318), parent="torso", z=7, caps=[(mx(1018), 322, 28, (mx(965), 420)), (mx(1026), 440, 25, (mx(965), 420))]),
             "armlo": dict(crop=(mx(1085), 425, mx(976), 668), pivot=(mx(1026), 442), parent="armup", z=6,
                           keep_poly=[(452,425),(550,425),(550,540),(558,560),(556,662),(492,662),(490,560),(452,540)],
+                          caps=[(mx(1026), 444, 24, (mx(965), 460))],
                           color_clear=dict(y_from=555, ref=(571, 610), tol=34)),
         },
         "far": {"thigh": "thigh", "shin": "shin", "foot": "foot", "armup": "armup", "armlo": "armlo"},
@@ -190,6 +202,26 @@ def cut():
                 for yy in range(max(cy1, y1), min(cy2, y2)):
                     for xx in range(max(cx1, x1), min(cx2, x2)):
                         px[xx - x1, yy - y1] = (0, 0, 0, 0)
+
+            # capsules d'articulation : disque couleur + lisere sombre SOUS la piece
+            if "caps" in p:
+                from PIL import ImageDraw
+                base = Image.new("RGBA", piece.size, (0, 0, 0, 0))
+                dr = ImageDraw.Draw(base)
+                for cx, cy, r, ref in p["caps"]:
+                    col = sheet.getpixel(ref)[:3] + (255,)
+                    lx, ly = cx - x1, cy - y1
+                    dr.ellipse([lx - r, ly - r, lx + r, ly + r], fill=(58, 47, 38, 255))
+                    dr.ellipse([lx - r + 4, ly - r + 4, lx + r - 4, ly + r - 4], fill=col)
+                base.alpha_composite(piece)
+                piece = base
+
+            # aretes de coupe (torse face) : trait sombre vertical
+            if "lines" in p:
+                from PIL import ImageDraw
+                dr = ImageDraw.Draw(piece)
+                for lx, ly1, ly2 in p["lines"]:
+                    dr.line([(lx - x1, ly1 - y1), (lx - x1, ly2 - y1)], fill=(58, 47, 38, 255), width=4)
 
             piece.save(outdir / f"{name}.webp", "WEBP", quality=88)
             entry["pieces"][name] = {
